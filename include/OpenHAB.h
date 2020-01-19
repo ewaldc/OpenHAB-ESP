@@ -10,7 +10,7 @@
 #define OpenHABDebug
 #endif
 
-//#define OPENHAB_GEN_CONFIG    // Comment to swicth to run-time mode
+#define OPENHAB_GEN_CONFIG    // Comment to swicth to run-time mode
 #define SSE_MAX_CHANNELS 8
 
 // Avoid warning: always_inline function might not be inlinable [-Wattributes]
@@ -298,10 +298,6 @@ protected:
 	const char **_allowedMAC;
 
 	char *getCurrentDateTime();
-	void serverSentEvent(Item* item);
-	void SSEHandler(Subscription *subscription);
-	void SSEBroadcastPageChange(ItemState &itemState);
-	void SSEKeepAlive(Subscription *subscription);
 
 #ifdef OPENHAB_GEN_CONFIG
 	Group *newGroup(const char *name, Item *item, JsonObject obj, ItemType type);
@@ -309,6 +305,9 @@ protected:
 	Group *getGroup(const char *name);
 	Item *getItem(const char *name);	
 #else
+	void SSEHandler(Subscription *subscription);
+	void SSEBroadcastPageChange(ItemState &itemState);
+	void SSEKeepAlive(Subscription *subscription);
 	uint8_t getItemIdx(const char *name);
 	void updateItem(const JsonVariant itemObj, const JsonVariant widgetObj, const char *pageId);
 	float functionAVG(uint8_t *groupItems, uint8_t count);

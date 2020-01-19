@@ -307,7 +307,7 @@ DynamicJsonDocument OpenHab::getJsonDocFromFile(String fileName) {
 	DbgPrint(F("getJsonDocFromFile: file name: "), fileName);
 	DbgPrint(F(" - free heap memory @entry: "), ESP.getFreeHeap());
 	File f = SPIFFS.open(fileName, "r");
-	DynamicJsonDocument doc(ESP.getFreeHeap() - 2048);
+	DynamicJsonDocument doc(ESP.getFreeHeap() - 4096);
 	//DbgPrintln(F(" - allocated: "), doc.capacity());
 	//DbgPrintln(F("after allocation of Json doc: "));
 	DeserializationError err = deserializeJson(doc, f, DeserializationOption::NestingLimit(20));
@@ -613,7 +613,6 @@ void OpenHab::GetSitemap(const char *sitemap, String uriBase) {
 }
 
 void OpenHab::GenConfig(const char *OpenHabServer, const int port, const char *sitemap) {
-
 	String uriBase = F("http://");
 	uriBase += OpenHabServer;
 	uriBase += F(":");
