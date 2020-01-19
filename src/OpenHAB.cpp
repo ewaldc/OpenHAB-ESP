@@ -62,7 +62,7 @@ FORCE_INLINE float OpenHab::functionAVG(uint8_t *groupItems, uint8_t count) {
 
 static size_t snprintftime(char *state, char *label, const char *labelFormat, int count = 0) {
 	static char buf[40];    
-	static tm tmb;
+	tm tmb;
 	strptime(state, "%Y-%m-%dT%H:%M:%S", &tmb);
 	return (count == 0) ? strftime(buf, 40, labelFormat, &tmb) : strftime(label, count, labelFormat, &tmb);
 }		
@@ -106,11 +106,12 @@ void OpenHab::updateLabel(uint8_t itemIdx, char *state, ItemType type, int numIt
 		case ItemSwitch:
 		case ItemDateTime:
 			sprf(state, itemIdx); break;
+		case ItemDimmer:
 		case ItemNumber:
 		case ItemNumber_Angle:
 			sprf(strtof((state) ? state : "0", NULL), itemIdx); break; // (float)atof(item->state)
 		case ItemGroup:
-		case ItemDimmer:
+
 			(numItems == -1) ? sprf(atoi(state), itemIdx) : sprf(numItems, itemIdx); break;
 		default:;
 	}
@@ -135,19 +136,24 @@ FORCE_INLINE void OpenHab::setGroupState(const char *groupName) {
 
 // Function to set and eventually propagate (e.g. label, group state) the state of an item 
 void OpenHab::setState(uint8_t itemIdx, const char *state, bool updateGroup) {
-	static char prevState[128], intState[4];
+	static char prevState[64];
 	auto setCurrentDateTime = [&](void *p) {
-		//static bool first = true;
 		time_t now = time(nullptr); // Time since epoch
     	const tm* tm = localtime(&now); // Converted to localtime
-		//1
-		(F(" - currentDataTime: "), tm);
 		strftime ((char *) p, 24 ,"%FT%T", tm);  // Converted to an ISO date string
-		//if (!first) return;	// Register a call back every minute, but only on the first invocation
-		//first = false;
 		auto setStateBind = std::bind(static_cast<void(OpenHab::*)(uint8_t, const char*, bool)>(&OpenHab::setState), this, itemIdx, state, true);
 		if (!_currentDateTimer.active())
 			_currentDateTimer.attach(60.0, setStateBind);  // Refresh time every minute (could be optimized in the future)
+	};
+
+	auto setRollerShutterState = [&](size_t value) {
+		static char intState[4];
+		//size_t value = atoi(prevState);
+		if (strcmp_P(state, "UP") == 0) value = min(value + 10, (size_t)100);
+		else if (strcmp_P(state, "DOWN") == 0) value = max(value - 10,  (size_t)0);
+		else value = atoi(state);
+		sprintf_P(intState, PSTR("%d"), value);
+		return intState;
 	};
 
 	if (!state) return;							// NULL states can crash setState
@@ -158,17 +164,11 @@ void OpenHab::setState(uint8_t itemIdx, const char *state, bool updateGroup) {
 	Item item = getItem(itemIdx);				// Get Item copy from flash
 
 	size_t len = (itemState.state) ? strlen(itemState.state) + 1: 0;  // Length of old state
-	if (len) strncpy(prevState, itemState.state, min(len, (size_t)127));
+	if (len) strncpy(prevState, itemState.state, min(len, (size_t)sizeof(prevState)));
 	DbgPrint(F(" - previous state: "), prevState);
 
-	if (item.type == ItemRollerShutter) {
-		size_t value = atoi(prevState);
-		if (strcmp_P(state, "UP") == 0) value = min(value + 10, (size_t)100);
-		else if (strcmp_P(state, "DOWN") == 0) value = max(value - 10,  (size_t)0);
-		else value = atoi(state);
-		sprintf_P(intState, PSTR("%d"), value);
-		state = intState;
-	}
+	if (item.type == ItemRollerShutter) 
+		state = setRollerShutterState(atoi(prevState));
 
 	bool isCurrentDateTime = ((item.type == ItemDateTime) && !strncmp_P(item.name, PSTR("Current"), 7)); // item name reflecting current Date/Time?
 	len = (isCurrentDateTime) ? 24 : strlen(state) + 1;
@@ -194,7 +194,7 @@ void OpenHab::setState(uint8_t itemIdx, const char *state, bool updateGroup) {
 	for (JsonVariant groupName : groupNames)
 		setGroupState(groupName);
 	if (item.labelFormat) updateLabel(itemIdx, (char *)p, item.type);  // finally update the parent label reflecting the new state
-	if (_subscriptionCount && isCurrentDateTime) SSEBroadcastPageChange(itemState);
+	if (_subscriptionCount) SSEBroadcastPageChange(itemState);
 }
 
 // Function to set and eventually propagate (e.g. label, group state) the state of an item with numeric state (e.g. type Number)
@@ -204,6 +204,7 @@ FORCE_INLINE void OpenHab::setState(uint8_t itemIdx, float f, uint8 precision, b
 	setState(itemIdx, dtostrf(f, precision + 2, precision, fs), updateGroup);
 }
 
+/*
 FORCE_INLINE bool isFormatted(const char* label) {
 	char curr, next = *label++;
 	while ((curr = next) != '\0') {
@@ -212,6 +213,7 @@ FORCE_INLINE bool isFormatted(const char* label) {
 	}
 	return false;
 }
+*/
 
 uint8_t OpenHab::getItemIdx (const char *name) {
 	uint8_t middle, first = 0, last = itemCount;
@@ -879,19 +881,29 @@ void OpenHab::handleIcon(const char *uri) {
 		return (ContentType) 4;
 	};
 
+	char fileName[32];
 	//DbgPrintRequest(_server, F("icon"));
-	String state = _server.arg("state");
-	state.toLowerCase();
+	String s = _server.arg("state"); s.toLowerCase();
+	const char *state = s.c_str();
 	const char *format = _server.arg("anyFormat").c_str();
 	bool anyformat = (strlen(format)) ? (strcmp_P(format, PSTR("true")) == 0) : true;
 	ContentType type = (anyformat) ? IMAGE_DEFAULT : getIconType(_server.arg("format").c_str());
 	const char *ext = getContentTypeExt(type);
-	String fileName = uri; fileName += "-";	fileName += state; fileName += ext;
+	sprintf_P(fileName, PSTR("%s-%s%s"), uri, state, ext);
+	//String fileName = uri; fileName += "-";	fileName += state; fileName += ext;
 	//DbgPrintln(F("type: "), type);
-	//DbgPrintln(F("filename: "), fileName.c_str());
-	if (SPIFFS.exists(fileName)) return SendFile(fileName.c_str(), type);
-	fileName = uri;	fileName += ext;
-	SendFile(fileName.c_str(), type);
+	DbgPrintln(F("filename: "), fileName);
+	if (SPIFFS.exists(fileName)) return SendFile(fileName, type);
+	//unsigned short value = state.toInt() / 10 * 10; // round to a multiple of 10
+	unsigned short value = (atoi(state) / 10) * 10; // round to a multiple of 10
+	DbgPrintln(F("value: "), value);
+	sprintf_P(fileName, PSTR("%s-%d%s"), uri, value, ext);
+	DbgPrintln(F("filename: "), fileName);
+	//fileName = uri; fileName += "-"; fileName += value; fileName += ext;
+	if (SPIFFS.exists(fileName)) return SendFile(fileName, type);
+	sprintf_P(fileName, PSTR("%s%s"), uri, ext);
+	//fileName = uri;	fileName += ext;
+	SendFile(fileName, type);
 }
 
 void OpenHab::handleSubscribe() {
@@ -902,7 +914,7 @@ void OpenHab::handleSubscribe() {
 	DbgPrint(F("handleSubscribe"));
 	//DbgPrintRequest(F("subscribe: "));
 	File f = SPIFFS.open(F("/conf/subscribe"), "r");
-	StaticJsonDocument<450> jsonDoc;	// Allocaste on the stack to prevent heap fragmentation
+	StaticJsonDocument<450> jsonDoc;	// Allocate on the stack to prevent heap fragmentation
 	DeserializationError err = deserializeJson(jsonDoc, f);
 	f.close();
 	if (err) { 
