@@ -46,10 +46,10 @@ It's a developers paradise with just __one__ major challenge: there is only limi
 The technical architecture is based on following elements:
 - source code written in C++ version 11 which is the highest version supported by the Espressif 8266 toolset.<br>
 	This allows support for std::bind, auto variables/functions, templates and many other advanced functions
-- [Platform IO](https://github.com/platformio) on top of Visual Studio Code is used a base IDE, but Arduino IDE can be used as well
-- The [Arduino ESP8266 library](https://github.com/esp8266/Arduino) is the platform being used from [staging](https://github.com/platformio/platform-espressif8266.git#feature/stage).  Right now one single change to this platform code is required, but a PR has been initiated.
+- [Platform IO](https://github.com/platformio) on top of Visual Studio Code is being used as default IDE, but the Arduino IDE can be used as well
+- The [Arduino ESP8266 library](https://github.com/esp8266/Arduino) is the platform being used from [staging](https://github.com/platformio/platform-espressif8266.git#feature/stage).  All required code changes have been pulled and accepted into the master branch. 
 Key functions leveraged from this wonderful library are: ESP8266WebServer, SPIFFS, Ticker, ESP8266mDNS, Base64 and ESP8266HTTPClient
-- [ArduinoJSON](https://arduinojson.org/) is an outstanding library for embedded platforms that handles all JSON parsing and handling.  The author has been extremely helpful in supporting this project, even to the extend of adding support for parsing of very large strings with unknown lenghth at compile time.  
+- [ArduinoJSON](https://arduinojson.org/) is an outstanding library for embedded platforms that handles all JSON parsing and handling.  The author has been extremely helpful in supporting this project, even to the extend of adding support for parsing of very large strings with unknown lenghth at compile time.  You need version 6.14.0 (or later).
 - A seperate state engine is used to keep the state of the items, since ArduinoJson is not build for handling state.
 - Other libraries used: ESP8266TrueRandom for generating the subscription UUID for the event bus
 - Lots of effort has been spent to run on top of the [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer), including rewriting parts of that code, but despite these efforts the end result remained unstable in addition to consuming (too) much memory. 
@@ -65,7 +65,7 @@ The _data/conf_ folder is the equivalent of OpenHab's _conf_ folder and is used 
 Right now there is one very minor patch required to the Arduino ESP8266 library (ESP8266WebServer section) to support Server Sent Events.  Hopefully this won't be needed in the future as I have requested an enhancement and posted a PR.  Hence, for now, you need to use the staging version and modify the code.
 At this time you also need to use the staging function of ArduinoJson v6 to get things working (_JsonDocument.shrinkToFit() call)
 
-You can enable extra debug information by enabling _OpenHABDebug in _include/OpenHab.h_
+You can enable/disable extra debug information by enabling/disabling _OpenHABDebug_ in _include/OpenHab.h_
 You can also enable debug log information for the ESP8266 Arduino Library (e.g. -D DEBUG_ESP_PORT=Serial -D DEBUG_ESP_HTTP_CLIENT enables debug logging for the HTTP_Client library) 
 
 Working with OpenHab ESP happens in __3 phases__ :
@@ -81,13 +81,24 @@ To invoke the two different execution forms of the code, set or unset the __OPEN
 
 1. Download or clone the repository
 1. Install VSCode and PlatformIO extension (Linux/Windows (portable))
-1. Copy _include/secrets_example.h_ to _include/secrets.h_ and customize it to support your WiFi SSID's, ESP name, passwords and MAC addresses. You will find comments on how to do this embbedded in the file
-1. Enable __OPENHAB_GEN_CONFIG__ flag in _platformio.ini_ and provide the _name/IP address_ and _port_of your regular OpenHab 2 server and the _sitemap name_ you want to use on the ESP server with the _src/main.cpp_ file.
-1. Copy the data into _main.cpp_ and the _/data_ folder as outlined by the configuration generation run
-1. Disable __OPENHAB_GEN_CONFIG__ flag in _platformio.ini_ and add your code and rules to set or modify the state of all Items that correspond with your sensors or applicatiopn use case.  This can be done in the _src/main.cpp_ file or in seperate (include) files as desired.
-1. Use the PlatformIO _Upload File System Image_ extension to upload the configuration data to the ESP SPIFFS based flash file system.
-1. Compile the code, test and run.
+1. Copy _include/secrets_example.h_ to _include/secrets.h_ and customize it to support your WiFi SSID's, ESP name, passwords and MAC addresses. You will find more information embedded in the file
+1. Enable __OPENHAB_GEN_CONFIG__ flag in _include/OpenHab.h_ (line 10) or alternatively in _platformio.ini_ and provide the _name/IP address_ and _port_of your regular OpenHab 2 server and the _sitemap name_ you want to use on the ESP server with the _src/main.cpp_ file.
+1. Compile and run
+1. Copy the generated data into _main.cpp_ and the _/data_ folder as outlined by the configuration generation run
+1. Disable __OPENHAB_GEN_CONFIG__ flag in _platformio.ini_.  Add your code and rules to set or modify the state of all Items that correspond with your sensors or applicatiopn use case (see below).  This can be done in the _src/main.cpp_ file or in seperate (include) files as desired.  
+1. Compile the code and upload.  It's OK to run but it will fail since we have not uploaded the file system data.
+1. Use the PlatformIO _Upload File System Image_ extension to upload the configuration data to the ESP SPIFFS based flash file system. Reset the ESP. Now the OpenHab server should be running.
+1. Disable debugging output in _main.cpp_ by uncommenting _#define OpenHABDebug_ when all is running fine.
 
+## Integrating devices controlled by the ESP ##   
+
+The interface between the OpenHab server and logical/physical devices controlled by your ESP happens through 2 sets of functions:
+1. __Callback__ when an item changes state
+The function _handleStateChange()_ gets called whenever the user changes the state of an Item via the UI (e.g. Android application). In this way it's possible to invoke changes to the physical controls behind the item to reflect the changed state (e.g. drive pin HIGH).
+
+1. __Set state__ to reflect hardware changes in the user interface
+There are 3 flavors of _setState()_ that can be used to update the state of an Item based on a change in the hardware (e.g. a sensor)
+A few examples: _setState("CurrentDateTime", "2020-01-19T15:40:41")_, _setState(0, "2020-01-19T15:40:41")_ (using item index, 0 = "CurrentDateTime" in table _items_), _setState("Temperature_FF_Bath", 22.6)_ (using floating point value for numeric type items)
 
 ## Current limitations and known issues ##
 
