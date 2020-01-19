@@ -10,7 +10,7 @@
 #define OpenHABDebug
 #endif
 
-#define OPENHAB_GEN_CONFIG    // Comment to swicth to run-time mode
+//#define OPENHAB_GEN_CONFIG    // Comment to swicth to run-time mode
 #define SSE_MAX_CHANNELS 8
 
 // Avoid warning: always_inline function might not be inlinable [-Wattributes]
@@ -70,9 +70,6 @@ extern const PROGMEM char *allowedMAC[];
 
 #ifdef OPENHAB_GEN_CONFIG
 #include <ESP8266HTTPClient.h>
-//	extern const PROGMEM char *OPENHAB_SERVER;
-//	extern const PROGMEM char *SITEMAP;
-//	extern const PROGMEM int LISTEN_PORT;
 #endif
 
 #define strdup_P(s) strndup_P(s, sizeof(s))
@@ -268,7 +265,6 @@ public:
 	bool Init(const char *ssid, const char *APssid, const char* passphrase, const char* allowedMAC[] = {},
 		const char *local_ip = "", const char *gateway = "", const char *subnet = "");
 	void HandleClient();
-	void stateChangeCallback(state_callback_function_t callback);
 
 #ifdef OPENHAB_GEN_CONFIG
     void GenConfig(const char *OpenHabServer, const int port, const char *sitemap);
@@ -278,6 +274,11 @@ public:
 #else
 	//Item getItem(uint8_t itemIdx);
 	void StartServer();
+	void stateChangeCallback(state_callback_function_t callback);
+	void setState(const char *itemName, const char *state, bool updateGroup = true);
+	void setState(uint8_t itemIdx, const char *state, bool updateGroup = true);
+	void setState(uint8_t itemIdx, float f, uint8 precision = 6, bool updateGroup = true);
+	
 #endif
 
 protected:
@@ -313,9 +314,6 @@ protected:
 	float functionAVG(uint8_t *groupItems, uint8_t count);
 	const char *functionOR(uint8_t groupIdx, uint8_t itemIdx, int *numItems);
 	void setGroupState(const char *groupName);
-	void setState(const char *itemName, const char *state, bool updateGroup);
-	void setState(uint8_t itemIdx, const char *state, bool updateGroup = true);
-	void setState(uint8_t itemIdx, float f, uint8 precision = 6, bool updateGroup = true);
 	//void setState(uint8_t itemIdx, int i, bool updateGroup = true);
 	void updateLabel(uint8_t itemIdx, char *state, ItemType type, int numItems = -1);
 #endif
