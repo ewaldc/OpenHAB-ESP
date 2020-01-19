@@ -4,7 +4,7 @@
 .vscode/launch.json
 .vscode/ipch
 demos.text
-openhab.code-workspace
+*.code-workspace
 Debug
 lib
 Release
