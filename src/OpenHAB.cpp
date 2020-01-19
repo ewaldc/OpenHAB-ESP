@@ -11,7 +11,6 @@ extern uint8_t itemCount, groupCount;
 //OpenHab::OpenHab(Item *items, unsigned short itemCount, const int port) : 
 OpenHab::OpenHab(const int port) : 
 	_server(port),
-	_SSEserver(port + 1),
 	_port(port),
 	_print(_server.client()),
 	_itemList(nullptr),
@@ -434,7 +433,6 @@ out:
 
 void OpenHab::HandleClient() {
 	_server.handleClient();
-	_SSEserver.handleClient();
 }
 
 #ifdef OPENHAB_GEN_CONFIG
@@ -769,8 +767,6 @@ void OpenHab::GenConfig(const char *OpenHabServer, const int port, const char *s
 void OpenHab::StartServer() { //
 	_server.onNotFound(std::bind(&OpenHab::handleAll, this));
 	_server.begin();
-	_SSEserver.onNotFound(std::bind(&OpenHab::handleSSEAll, this));
-	_SSEserver.begin();
 }
 
 void OpenHab::GetSitemapsFromFS() {
@@ -826,10 +822,9 @@ void OpenHab::SendFile(String fname, ContentType contentType, const char *pre, c
 	} else DbgPrintln(F("File not found"));
 }
 
-ICACHE_FLASH_ATTR void OpenHab::handleNotFound(ESP8266WebServer &server) {
-	//DbgPrintln(F("handleNotFound: "), server.uri()); // At this point we don't understand the request
-	DbgPrintRequest(server, F("handleNotFound"));
-	server.send(404, F("text/plain"), server.responseCodeToString(404));
+ICACHE_FLASH_ATTR void OpenHab::handleNotFound() {
+	DbgPrintRequest(F("handleNotFound"));
+	_server.send(404, F("text/plain"), _server.responseCodeToString(404));
 }
 
 // While the data structures allow for multiple sitemaps (sitemap list), only one is supported for now
@@ -838,18 +833,14 @@ ICACHE_FLASH_ATTR void OpenHab::handleSitemaps(Sitemap *sitemap) {
 	String fileName = F("/conf/sitemaps/");
 	fileName += sitemap->name; 
 	SendFile(fileName, APP_JSON, PSTR("["), PSTR("]"));
-	//if (sitemap) _server.sendContent_P(PSTR(","));
 }
 
 void OpenHab::handleSitemap(const char *uri) {
-	//DbgPrintRequest(_server, F("handleSitemap"));
-	if (strcmp_P(uri, PSTR("events/subscribe")) == 0)
-		return handleSubscribe();	//this is a sitemap event registration
+	//DbgPrintRequest(F("handleSitemap"));
 	while (uri && *uri++ != '/');
 	DbgPrintln(F("handleSitemap - "), uri);
 
 	Sitemap *sitemap = _sitemapList;
-	//while (sitemap) {
 		Page *page = sitemap->pageList;
 		while (page) {
 			//DbgPrintln(F("page: "), page->pageId);
@@ -857,14 +848,12 @@ void OpenHab::handleSitemap(const char *uri) {
 				return SendJson(page->obj);
 			page = page->next;
 		}
-	//	sitemap = sitemap->next;
-	//}
-	handleNotFound(_server); 
+	handleNotFound(); 
 }
 
 void OpenHab::handleItem(const char *uri) {
 	uint8_t itemIdx = getItemIdx(uri);
-	if (!isValidItemIndex(itemIdx)) return handleNotFound(_server);
+	if (!isValidItemIndex(itemIdx)) return handleNotFound();
 	ItemState &itemState = itemStates[itemIdx];
 	JsonVariant obj = itemState.obj;
 	DbgPrint(F("handleItem - "));
@@ -911,7 +900,7 @@ void OpenHab::handleSubscribe() {
 	uint8_t channel;
 
 	DbgPrint(F("handleSubscribe"));
-	//DbgPrintRequest(_server, F("subscribe: "));
+	//DbgPrintRequest(F("subscribe: "));
 	File f = SPIFFS.open(F("/conf/subscribe"), "r");
 	StaticJsonDocument<450> jsonDoc;	// Allocaste on the stack to prevent heap fragmentation
 	DeserializationError err = deserializeJson(jsonDoc, f);
@@ -920,9 +909,8 @@ void OpenHab::handleSubscribe() {
 		DbgPrintln(F(" - deserializeJson failed "), err.c_str());
 		return;
 	}
-	//DynamicJsonDocument	jsonDoc = getJsonDocFromFile(F("/conf/subscribe"));
 	IPAddress clientIP = _server.client().remoteIP();
-	sprintf_P(buf, PSTR("http://%s:%d/rest/sitemaps/events/"), _espIP.toString().c_str(), _port + 1);
+	sprintf_P(buf, PSTR("http://%s:%d/rest/sitemaps/events/"), _espIP.toString().c_str(), _port);
 	ESP8266TrueRandom.uuid(uuid);
 
 	//Does this IP address already have a subscription. If so, reuse channel
@@ -931,20 +919,18 @@ void OpenHab::handleSubscribe() {
 
 	// Allocate a new channel, if available
 	if (_subscriptionCount == (SSE_MAX_CHANNELS - 1))
-		return handleNotFound(_SSEserver);  // We ran out of channels
+		return handleNotFound();  // We ran out of channels
 	++_subscriptionCount;
 	for (channel = 0; channel < SSE_MAX_CHANNELS; channel++) // Find first free slot
 		if (!_subscription[channel].clientIP) break;
 
 	_subscription[channel] = {(uint32_t) clientIP, _server.client(), ESP8266TrueRandom.uuidToString(uuid), nullptr, nullptr, Ticker()};
 	strcat(buf, _subscription[channel].uuidStr.c_str());
-	//SSEURL += _subscription[channel].uuidStr;
 	DbgPrint(F(" - allocated channel "), channel);	
 	DbgPrintln(F(" on uri "), buf);	
 
 	JsonObject context = jsonDoc.as<JsonObject>()[F("context")];
 	JsonArray location = context[F("headers")][F("Location")];
-
 	location[0] = (const char *) buf;
 	SendJson(jsonDoc.as<JsonVariant>());
 	jsonDoc.clear();
@@ -983,35 +969,33 @@ void OpenHab::SSEBroadcastPageChange(ItemState &itemState) {
 	}
 }
 
-void OpenHab::SSEKeepAlive(Subscription *subscriptionPtr) {
-	Subscription &subscription = *subscriptionPtr;
-	DbgPrintln(F("SSEKeepAlive for IP: "), subscription.clientIP);
-    WiFiClient client = subscription.client;  
+void OpenHab::SSEKeepAlive(Subscription *subscription) {
+	DbgPrintln(F("SSEKeepAlive for IP: "), subscription->clientIP);
+    WiFiClient client = subscription->client;  
 	if (client.connected()) {
-		DbgPrintln(F("Client is still connected - pageId: "), subscription.pageId);
-		client.printf_P(PSTR("event: event\ndata: { \"TYPE\":\"ALIVE\",\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\n\n"), subscription.sitemap, subscription.pageId);
-	} else { //if (subscription.clientIP) {
+		DbgPrintln(F("Client is still connected - pageId: "), subscription->pageId);
+		client.printf_P(PSTR("event: event\ndata: { \"TYPE\":\"ALIVE\",\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\n\n"), subscription->sitemap, subscription->pageId);
+	} else {
 		Serial.println(F("SSEKeepAlive - client no longer connected, remove subscription"));
 		client.flush();
 		client.stop();
-		subscription.clientIP = 0;
-		subscription.keepAliveTimer.detach();
+		subscription->clientIP = 0;
+		subscription->keepAliveTimer.detach();
 		_subscriptionCount--;
     }
 }
 
-void OpenHab::handleSSEAll() {
-	const char *uri = _SSEserver.uri().c_str();
-	if (strncmp_P(uri, PSTR("/rest/sitemaps/events/"), sizeof("/rest/sitemaps/events"))) return handleNotFound(_SSEserver);
-	uri += sizeof("/rest/sitemaps/events");
-	DbgPrint(PSTR("Listener request for uuid "), uri);
+void OpenHab::handleSSEAll(const char *uri) {
+	if (strcmp_P(uri, PSTR("subscribe")) == 0)
+	return handleSubscribe();	//this is a sitemap event registration
 
-	WiFiClient client = _SSEserver.client();
+	DbgPrint(PSTR("Listener request for uuid "), uri);
+	WiFiClient client = _server.client();
 	client.setNoDelay(true);
 	IPAddress clientIP = client.remoteIP();
 	String IPaddrstr = IPAddress(clientIP).toString();
 	//DbgPrintln(F("clientIP from SSEserver: "), IPaddrstr.c_str());	
-	//DbgPrintRequest(_SSEserver, F("SSEHandler"));
+	//DbgPrintRequest(F("SSEHandler"));
 	uint8_t channel;
 	for (channel = 0; channel < SSE_MAX_CHANNELS; channel++)
 		if ((_subscription[channel].clientIP == (uint32_t) clientIP)) { //&&
@@ -1022,22 +1006,21 @@ void OpenHab::handleSSEAll() {
 		}
 	if (channel == SSE_MAX_CHANNELS) {	// IP address and UUID did not match, reject this client
    		DbgPrintln(F(" - unregistered client tries to listen\n"));
-    	return handleNotFound(_SSEserver);
+	   	return handleNotFound();
  	}
 	DbgPrint(F(" - client IP/UUID match for channel: "), channel);	
 	_subscription[channel].client = client; // update client
-	_subscription[channel].sitemap =  (strcmp((_SSEserver.arg(0)).c_str(), _sitemapList->name)) ? nullptr : _sitemapList->name;
+	_subscription[channel].sitemap =  (strcmp((_server.arg(0)).c_str(), _sitemapList->name)) ? nullptr : _sitemapList->name;
 	DbgPrint(F(" - sitemap: "), _subscription[channel].sitemap);	
 
-	const char *pageId = (_SSEserver.arg(1)).c_str();
+	const char *pageId = (_server.arg(1)).c_str();
 	Page *page = _sitemapList->pageList;
 	while (page && (strcmp(page->pageId, pageId))) page = page->next;
 	_subscription[channel].pageId = (page) ? page->pageId : nullptr;
 	DbgPrintln(F(" - pageid: "), _subscription[channel].pageId);	
 
-	_SSEserver.setContentLength(CONTENT_LENGTH_UNKNOWN);
-	_SSEserver.sendContent_P(PSTR("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream;\r\nConnection: keep-alive\r\nCache-Control: no-cache\r\nAccess-Control-Allow-Origin: *\r\n\r\n"));
-	//client.printf_P(PSTR("event: event\r\ndata: { \"TYPE\":\"ALIVE\",\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\r\n\r\n"), _subscription[channel].sitemap, _subscription[channel].pageid);
+	_server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+	_server.sendContent_P(PSTR("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream;\r\nConnection: keep-alive\r\nCache-Control: no-cache\r\nAccess-Control-Allow-Origin: *\r\n\r\n"));
 	auto keepaliveBind = std::bind(static_cast<void(OpenHab::*)(Subscription *)>(&OpenHab::SSEKeepAlive), this, &(_subscription[channel]));
 	_subscription[channel].keepAliveTimer.attach_scheduled((float)120.0, keepaliveBind);  // Refresh time every minute (could be optimized in the future)
 }
@@ -1048,15 +1031,16 @@ void OpenHab::handleAll() {
 	DbgPrintln(F("OpenHab::handleAll: "), uri);
 	DbgPrintln(F("free heap memory @entry: "), ESP.getFreeHeap());
 	if (strncmp_P(uri, PSTR("/icon/"), 6) == 0)	return handleIcon(uri);
-	if (strncmp_P(uri, PSTR("/rest/items/"), 12) == 0)	return handleItem(uri + 12);
-	if (strncmp_P(uri, PSTR("/rest/sitemaps/"), 15) == 0)	return (handleSitemap(uri + sizeof("/rest/sitemaps")));
+	if (strncmp_P(uri, PSTR("/rest/items/"), 12) == 0) return handleItem(uri + 12);
+	if (strncmp_P(uri, PSTR("/rest/sitemaps/events/"), 22) == 0) return (handleSSEAll(uri + sizeof("/rest/sitemaps/events")));
+	if (strncmp_P(uri, PSTR("/rest/sitemaps/"), 15) == 0) return (handleSitemap(uri + sizeof("/rest/sitemaps")));
 	if (strcmp_P(uri, PSTR("/rest/sitemaps")) == 0)	return handleSitemaps(_sitemapList);
 	if (strcmp_P(uri, PSTR("/chart")) == 0)	return SendFile(strcat_P((char *)uri, getContentTypeExt(IMAGE_PNG)), IMAGE_PNG);
 	if (strcmp_P(uri, PSTR("/rest")) == 0)	return SendFile(F("/conf/rest"));
 	if (strcmp_P(uri, PSTR("/rest/links")) == 0) return _server.send_P(200, PSTR("application/json"), PSTR("[]"));
 	if (strcmp_P(uri, PSTR("/rest/bindings")) == 0)	return _server.send_P(200, PSTR("application/json"), PSTR("[]"));
 	if (strcmp_P(uri, PSTR("/rest/services")) == 0)	return SendFile(F("/conf/services.cfg"));
-	handleNotFound(_server);
+	handleNotFound();
 }
 
 #endif

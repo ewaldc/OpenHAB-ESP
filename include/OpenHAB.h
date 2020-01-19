@@ -283,7 +283,6 @@ public:
 
 protected:
 	ESP8266WebServer _server;
-	ESP8266WebServer _SSEserver;
 	const int _port;
 	IPAddress _espIP;
 	BufferedPrint<WiFiClient, 256> _print;
@@ -325,11 +324,10 @@ protected:
 
 	void registerLinkHandlers(const JsonObject obj, const char *pageId, Sitemap *sitemap);
 	void handleSitemaps(Sitemap *sitemapList);
-	void handleAll(), handleSubscribe();
+	void handleAll(), handleSubscribe(), handleNotFound();
 	void handleSitemap(const char *uri);
 	void handleIcon(const char *uri);
-	void handleNotFound(ESP8266WebServer &server);
-	void handleSSEAll();
+	void handleSSEAll(const char *uri);
 	void handleItem(const char *uri);
 	//DynamicJsonDocument getJsonDocFromFile(File f); // DeserializationError& error);
 	DynamicJsonDocument getJsonDocFromFile(String fileName); // DeserializationError& error);
@@ -349,13 +347,13 @@ protected:
 	};
 	
 	#ifdef OpenHABDebug
-	ICACHE_FLASH_ATTR void DbgPrintRequest(ESP8266WebServer &server, String str) {
+	ICACHE_FLASH_ATTR void DbgPrintRequest(String str) {
 		String message = F("\nDbgPrintRequest - URI: ");
-		message += server.uri(); message += F(" - METHOD: ");
-		message += HTTPMethodStr[server.method()];	message += F("  - ARGUMENTS: ");
-		for (uint8_t i = 0; i < server.args(); i++) {
-			message += server.argName(i); message += F(" = ");
-			message += server.arg(i); message += F("; ");
+		message += _server.uri(); message += F(" - METHOD: ");
+		message += HTTPMethodStr[_server.method()];	message += F("  - ARGUMENTS: ");
+		for (uint8_t i = 0; i < _server.args(); i++) {
+			message += _server.argName(i); message += F(" = ");
+			message += _server.arg(i); message += F("; ");
 		}
 		DbgPrintln(str, message);
 	}
