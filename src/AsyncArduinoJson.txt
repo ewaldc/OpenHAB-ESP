@@ -1,0 +1,101 @@
+// AsyncJson.h
+/*
+  Async Response to use with ArduinoJson and AsyncWebServer
+  Written by Andrew Melvin (SticilFace) with help from me-no-dev and BBlanchon.
+  Example of callback in use
+   server.on("/json", HTTP_ANY, [](AsyncWebServerRequest * request) {
+    AsyncJsonResponse * response = new AsyncJsonResponse();
+    JsonObject& root = response->getRoot();
+    root["key1"] = "key number one";
+    JsonObject& nested = root.createNestedObject("nested");
+    nested["key1"] = "key number one";
+    response->setLength();
+    request->send(response);
+  });
+  --------------------
+  Async Request to use with ArduinoJson and AsyncWebServer
+  Written by Arsène von Wyss (avonwyss)
+  Example
+  AsyncCallbackJsonWebHandler* handler = new AsyncCallbackJsonWebHandler("/rest/endpoint");
+  handler->onRequest([](AsyncWebServerRequest *request, JsonVariant &json) {
+    JsonObject& jsonObj = json.as<JsonObject>();
+    // ...
+  });
+  server.addHandler(handler);
+  
+*/
+#ifndef ASYNC_ARDUINO_JSON_H_
+#define ASYNC_ARDUINO_JSON_H_
+#include <ArduinoJson.h>
+//#include <ESPAsyncWebServer.h>
+#include <Print.h>
+
+class ChunkedPrint : public Print {
+  private:
+    uint8_t* _buffer;
+    int _toSkip;
+    size_t _len, _pos;
+  public:
+    ChunkedPrint(uint8_t* buffer, size_t len, size_t toSkip): _buffer(buffer), _toSkip(toSkip), _len(len), _pos(0) {
+    }
+    virtual ~ChunkedPrint(){}
+
+    size_t write(uint8_t c) {
+        if (_toSkip-- > 0) return 1; // Skip bytes already sent to the socket {
+        //Serial.print(F("ChunkedPrint write - no skip: "));
+        //Serial.println(c);
+        //Serial.print(F("ChunkedPrint write - _len: "));
+        //Serial.println(_len);
+        if (_len > 0) {
+            _len--;
+            _buffer[_pos++] = c;
+            return 1;
+        }
+        return 0;
+    }
+
+    size_t write(const uint8_t *buf, size_t size) {
+        if ((_toSkip -= size) >= 0) return size;  // Skip 'size' bytes already sent to socket
+        //Serial.print(F("ChunkedPrint write (no skip) with size: "));
+        //Serial.println(size);
+        size_t len = std::min((size_t)std::abs(_toSkip), size); // At this point, we skip the last bytes alread sent
+        if (_len > 0) {
+          len = std::min(len, _len);
+          memcpy((void *)(_buffer + _pos), (void *)buf, len);
+          _len -= len;
+          _pos += len;
+          return len;
+        }
+        return 0; // All done
+        //return this->Print::write(buf, size);
+    }
+};
+
+class AsyncJsonResponse: public AsyncAbstractResponse {
+  protected:
+    JsonVariant _obj;
+    bool _isValid;
+
+  public:    
+    AsyncJsonResponse(JsonVariant obj, String contentType): _obj(obj), _isValid(true) {
+        _code = 200;
+        _contentType = contentType;
+        _isValid = ((_contentLength = measureJson(_obj)) > 0);
+    }
+    ~AsyncJsonResponse() {}
+    bool _sourceValid() const { return _isValid; }
+    //size_t setLength() {
+      //_isValid = ((_contentLength = measureJson(_obj)) > 0);
+      //return _contentLength;
+    //}
+    size_t _fillBuffer(uint8_t *buffer, size_t maxLen) {
+        //Serial.print(F("_fillBuffer maxlen: "));
+        //Serial.print(maxLen);
+        //Serial.print(F(" - _sentLength: "));
+        //Serial.println(_sentLength);
+        ChunkedPrint cb(buffer, maxLen, _sentLength);
+        serializeJson(_obj, cb);
+        return maxLen;
+    }
+};
+#endif // ASYNC_ARDUINO_JSON_H_

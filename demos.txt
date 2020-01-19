@@ -1,0 +1,1241 @@
+
+{
+  "name": "demos",
+  "label": "DemoESP",
+  "link": "/rest/sitemaps/demos",
+  "homepage":
+  {
+    "id": "demos",
+    "title": "DemoESP",
+    "link": "/rest/sitemaps/demos/demos",
+    "leaf": false,
+    "timeout": false,
+    "widgets": [
+      {
+        "widgetId": "00",
+        "type": "Frame",
+        "label": "",
+        "icon": "frame",
+        "mappings": [],
+        "widgets": [
+          {
+            "widgetId": "0000",
+            "type": "Group",
+            "label": "First Floor",
+            "icon": "firstfloor",
+            "mappings": [],
+            "item":
+            {
+              "members": [],
+              "link": "/rest/items/gFF",
+              "state": "",
+              "editable": false,
+              "type": "Group",
+              "name": "gFF",
+              "label": "First Floor",
+              "category": "firstfloor",
+              "tags": ["FirstFloor"],
+              "groupNames": []
+            },
+            "linkedPage":
+            {
+              "id": "0000",
+              "title": "First Floor",
+              "icon": "firstfloor",
+              "link": "/rest/sitemaps/demos/0000",
+              "leaf": false,
+              "timeout": false,
+              "widgets": [
+                {
+                  "widgetId": "FF_Bath",
+                  "type": "Group",
+                  "label": "Bathroom",
+                  "icon": "bath",
+                  "mappings": [],
+                  "item":
+                  {
+                    "members": [],
+                    "link": "/rest/items/FF_Bath",
+                    "state": "",
+                    "editable": false,
+                    "type": "Group",
+                    "name": "FF_Bath",
+                    "label": "Bathroom",
+                    "category": "bath",
+                    "tags": ["Bathroom"],
+                    "groupNames": ["gFF"]
+                  },
+                  "linkedPage":
+                  {
+                    "id": "FF_Bath",
+                    "title": "Bathroom",
+                    "icon": "bath",
+                    "link": "/rest/sitemaps/demos/FF_Bath",
+                    "leaf": true,
+                    "timeout": false,
+                    "widgets": [
+                      {
+                        "widgetId": "Light_FF_Bath_Ceiling",
+                        "type": "Switch",
+                        "label": "Ceiling",
+                        "icon": "switch",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Light_FF_Bath_Ceiling",
+                          "state": "",
+                          "editable": false,
+                          "type": "Switch",
+                          "name": "Light_FF_Bath_Ceiling",
+                          "label": "Ceiling",
+                          "tags": ["Light"],
+                          "groupNames": ["FF_Bath", "Lights"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Light_FF_Bath_Mirror",
+                        "type": "Switch",
+                        "label": "Mirror",
+                        "icon": "switch",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Light_FF_Bath_Mirror",
+                          "state": "",
+                          "editable": false,
+                          "type": "Switch",
+                          "name": "Light_FF_Bath_Mirror",
+                          "label": "Mirror",
+                          "tags": ["Light"],
+                          "groupNames": ["FF_Bath", "Lights"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Heating_FF_Bath",
+                        "type": "Switch",
+                        "label": "Bath",
+                        "icon": "heating",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Heating_FF_Bath",
+                          "state": "",
+                          "editable": false,
+                          "type": "Switch",
+                          "name": "Heating_FF_Bath",
+                          "label": "Bath",
+                          "category": "heating",
+                          "tags": ["HVAC"],
+                          "groupNames": ["FF_Bath", "Heating"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Shutter_FF_Bath",
+                        "type": "Switch",
+                        "label": "Bath",
+                        "icon": "rollershutter",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Shutter_FF_Bath",
+                          "state": "",
+                          "editable": false,
+                          "type": "Rollershutter",
+                          "name": "Shutter_FF_Bath",
+                          "label": "Bath",
+                          "tags": ["Blinds"],
+                          "groupNames": ["FF_Bath", "Shutters"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Window_FF_Bath",
+                        "type": "Text",
+                        "label": "",
+                        "icon": "contact",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Window_FF_Bath",
+                          "state": "",
+                          "transformedState": "",
+                          "editable": false,
+                          "type": "Contact",
+                          "name": "Window_FF_Bath",
+                          "label": "Bath",
+                          "tags": ["Window"],
+                          "groupNames": ["FF_Bath", "Windows"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Temperature_FF_Bath",
+                        "type": "Text",
+                        "label": "",
+                        "icon": "temperature",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Temperature_FF_Bath",
+                          "state": "",
+                          "editable": false,
+                          "type": "Number",
+                          "name": "Temperature_FF_Bath",
+                          "label": "Bath",
+                          "category": "temperature",
+                          "tags": ["Measurement", "Temperature"],
+                          "groupNames": ["Temperature", "FF_Bath"]
+                        },
+                        "widgets": []
+                      }
+                    ]
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "FF_Bed",
+                  "type": "Group",
+                  "label": "Bedroom",
+                  "icon": "bedroom",
+                  "mappings": [],
+                  "item":
+                  {
+                    "members": [],
+                    "link": "/rest/items/FF_Bed",
+                    "state": "",
+                    "editable": false,
+                    "type": "Group",
+                    "name": "FF_Bed",
+                    "label": "Bedroom",
+                    "category": "bedroom",
+                    "tags": ["Bedroom"],
+                    "groupNames": ["gFF"]
+                  },
+                  "linkedPage":
+                  {
+                    "id": "FF_Bed",
+                    "title": "Bedroom",
+                    "icon": "bedroom",
+                    "link": "/rest/sitemaps/demos/FF_Bed",
+                    "leaf": true,
+                    "timeout": false,
+                    "widgets": [
+                      {
+                        "widgetId": "Light_FF_Bed_Ceiling",
+                        "type": "Switch",
+                        "label": "Ceiling",
+                        "icon": "switch",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Light_FF_Bed_Ceiling",
+                          "state": "",
+                          "editable": false,
+                          "type": "Switch",
+                          "name": "Light_FF_Bed_Ceiling",
+                          "label": "Ceiling",
+                          "tags": ["Light"],
+                          "groupNames": ["FF_Bed", "Lights"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Heating_FF_Bed",
+                        "type": "Switch",
+                        "label": "Bedroom",
+                        "icon": "heating",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Heating_FF_Bed",
+                          "state": "",
+                          "editable": false,
+                          "type": "Switch",
+                          "name": "Heating_FF_Bed",
+                          "label": "Bedroom",
+                          "category": "heating",
+                          "tags": ["HVAC"],
+                          "groupNames": ["FF_Bed", "Heating"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Shutter_FF_Bed",
+                        "type": "Switch",
+                        "label": "Bedroom",
+                        "icon": "rollershutter",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Shutter_FF_Bed",
+                          "state": "",
+                          "editable": false,
+                          "type": "Rollershutter",
+                          "name": "Shutter_FF_Bed",
+                          "label": "Bedroom",
+                          "tags": ["Blinds"],
+                          "groupNames": ["FF_Bed", "Shutters"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Window_FF_Bed",
+                        "type": "Text",
+                        "label": "",
+                        "icon": "contact",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Window_FF_Bed",
+                          "state": "",
+                          "transformedState": "",
+                          "editable": false,
+                          "type": "Contact",
+                          "name": "Window_FF_Bed",
+                          "label": "Bedroom",
+                          "tags": ["Window"],
+                          "groupNames": ["FF_Bed", "Windows"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Temperature_FF_Bed",
+                        "type": "Text",
+                        "label": "",
+                        "icon": "temperature",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Temperature_FF_Bed",
+                          "state": "",
+                          "editable": false,
+                          "type": "Number",
+                          "name": "Temperature_FF_Bed",
+                          "label": "Bedroom",
+                          "category": "temperature",
+                          "tags": ["Measurement", "Temperature"],
+                          "groupNames": ["Temperature", "FF_Bed"]
+                        },
+                        "widgets": []
+                      }
+                    ]
+                  },
+                  "widgets": []
+                }
+              ]
+            },
+            "widgets": []
+          }
+        ]
+      },
+      {
+        "widgetId": "01",
+        "type": "Frame",
+        "label": "Weather",
+        "icon": "frame",
+        "mappings": [],
+        "widgets": [
+          {
+            "widgetId": "0100",
+            "type": "Text",
+            "label": "",
+            "icon": "temperature",
+            "valuecolor": "lightgray",
+            "mappings": [],
+            "item":
+            {
+              "link": "/rest/items/Weather_Temperature",
+              "state": "",
+              "editable": false,
+              "type": "Number",
+              "name": "Weather_Temperature",
+              "label": "Outside Temperature",
+              "category": "temperature",
+              "tags": [],
+              "groupNames": ["Weather", "Weather_Chart"]
+            },
+            "linkedPage":
+            {
+              "id": "0100",
+              "title": "Outside Temperature [- °C]",
+              "icon": "temperature",
+              "link": "/rest/sitemaps/demos/0100",
+              "leaf": false,
+              "timeout": false,
+              "widgets": [
+                {
+                  "widgetId": "010000",
+                  "type": "Frame",
+                  "label": "",
+                  "icon": "frame",
+                  "mappings": [],
+                  "widgets": [
+                    {
+                      "widgetId": "01000000",
+                      "type": "Text",
+                      "label": "",
+                      "icon": "temperature",
+                      "mappings": [],
+                      "item":
+                      {
+                        "link": "/rest/items/Weather_Temp_Max",
+                        "state": "",
+                        "editable": false,
+                        "type": "Number",
+                        "name": "Weather_Temp_Max",
+                        "label": "Todays Maximum",
+                        "category": "temperature",
+                        "tags": [],
+                        "groupNames": ["Weather", "Weather_Chart"]
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "01000001",
+                      "type": "Text",
+                      "label": "",
+                      "icon": "temperature",
+                      "mappings": [],
+                      "item":
+                      {
+                        "link": "/rest/items/Weather_Temp_Min",
+                        "state": "",
+                        "editable": false,
+                        "type": "Number",
+                        "name": "Weather_Temp_Min",
+                        "label": "Todays Minimum",
+                        "category": "temperature",
+                        "tags": [],
+                        "groupNames": ["Weather", "Weather_Chart"]
+                      },
+                      "widgets": []
+                    }
+                  ]
+                },
+                {
+                  "widgetId": "010001",
+                  "type": "Frame",
+                  "label": "",
+                  "icon": "frame",
+                  "mappings": [],
+                  "widgets": [
+                    {
+                      "widgetId": "01000100",
+                      "type": "Switch",
+                      "label": "Chart Period",
+                      "icon": "chart",
+                      "mappings": [
+                        {
+                          "command": "0",
+                          "label": "Hour"
+                        },
+                        {
+                          "command": "1",
+                          "label": "Day"
+                        },
+                        {
+                          "command": "2",
+                          "label": "Week"
+                        }
+                      ],
+                      "item":
+                      {
+                        "link": "/rest/items/Weather_Chart_Period",
+                        "state": "",
+                        "editable": false,
+                        "type": "Number",
+                        "name": "Weather_Chart_Period",
+                        "label": "Chart Period",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "01000101",
+                      "type": "Chart",
+                      "label": "Weather_Chart",
+                      "icon": "chart",
+                      "mappings": [],
+                      "refresh": 600000,
+                      "period": "h",
+                      "item":
+                      {
+                        "members": [],
+                        "link": "/rest/items/Weather_Chart",
+                        "state": "",
+                        "editable": false,
+                        "type": "Group",
+                        "name": "Weather_Chart",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    }
+                  ]
+                }
+              ]
+            },
+            "widgets": []
+          },
+          {
+            "widgetId": "0101",
+            "type": "Text",
+            "label": "Astronomical Data",
+            "icon": "sun",
+            "mappings": [],
+            "linkedPage":
+            {
+              "id": "0101",
+              "title": "Astronomical Data",
+              "icon": "sun",
+              "link": "/rest/sitemaps/demos/0101",
+              "leaf": true,
+              "timeout": false,
+              "widgets": [
+                {
+                  "widgetId": "010100",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "sun",
+                  "mappings": [],
+                  "item":
+                  {
+                    "link": "/rest/items/Sun_Elevation",
+                    "state": "",
+                    "editable": false,
+                    "type": "Number:Angle",
+                    "name": "Sun_Elevation",
+                    "label": "Sun Elevation",
+                    "category": "sun",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "010101",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "sun",
+                  "mappings": [],
+                  "item":
+                  {
+                    "link": "/rest/items/Sun_Azimuth",
+                    "state": "",
+                    "editable": false,
+                    "type": "Number:Angle",
+                    "name": "Sun_Azimuth",
+                    "label": "Sun Azimuth",
+                    "category": "sun",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "010102",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "sunrise",
+                  "mappings": [],
+                  "item":
+                  {
+                    "link": "/rest/items/Sunrise_Time",
+                    "state": "",
+                    "editable": false,
+                    "type": "DateTime",
+                    "name": "Sunrise_Time",
+                    "label": "Sunrise",
+                    "category": "sunrise",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "010103",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "sunset",
+                  "mappings": [],
+                  "item":
+                  {
+                    "link": "/rest/items/Sunset_Time",
+                    "state": "",
+                    "editable": false,
+                    "type": "DateTime",
+                    "name": "Sunset_Time",
+                    "label": "Sunset",
+                    "category": "sunset",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "010104",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "moon",
+                  "mappings": [],
+                  "item":
+                  {
+                    "link": "/rest/items/Moon_Elevation",
+                    "state": "",
+                    "editable": false,
+                    "type": "Number:Angle",
+                    "name": "Moon_Elevation",
+                    "label": "Moon Elevation",
+                    "category": "moon",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "010105",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "moon",
+                  "mappings": [],
+                  "item":
+                  {
+                    "link": "/rest/items/Moon_Azimuth",
+                    "state": "",
+                    "editable": false,
+                    "type": "Number:Angle",
+                    "name": "Moon_Azimuth",
+                    "label": "Moon Azimuth",
+                    "category": "moon",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "010106",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "moon",
+                  "mappings": [],
+                  "item":
+                  {
+                    "link": "/rest/items/Moon_Phase",
+                    "state": "",
+                    "stateDescription":
+                    {
+                      "pattern": "%s",
+                      "readOnly": true,
+                      "options": [
+                        {
+                          "value": "NEW",
+                          "label": "New moon"
+                        },
+                        {
+                          "value": "WAXING_CRESCENT",
+                          "label": "Waxing crescent"
+                        },
+                        {
+                          "value": "FIRST_QUARTER",
+                          "label": "First quarter"
+                        },
+                        {
+                          "value": "WAXING_GIBBOUS",
+                          "label": "Waxing gibbous"
+                        },
+                        {
+                          "value": "FULL",
+                          "label": "Full moon"
+                        },
+                        {
+                          "value": "WANING_GIBBOUS",
+                          "label": "Waning gibbous"
+                        },
+                        {
+                          "value": "THIRD_QUARTER",
+                          "label": "Third quarter"
+                        },
+                        {
+                          "value": "WANING_CRESCENT",
+                          "label": "Waning crescent"
+                        }
+                      ]
+                    },
+                    "editable": false,
+                    "type": "String",
+                    "name": "Moon_Phase",
+                    "label": "Moon Phase",
+                    "category": "moon",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                }
+              ]
+            },
+            "widgets": []
+          }
+        ]
+      },
+      {
+        "widgetId": "02",
+        "type": "Frame",
+        "label": "Demo",
+        "icon": "frame",
+        "mappings": [],
+        "widgets": [
+          {
+            "widgetId": "0200",
+            "type": "Text",
+            "label": "",
+            "icon": "calendar",
+            "mappings": [],
+            "item":
+            {
+              "link": "/rest/items/CurrentDate",
+              "state": "",
+              "editable": false,
+              "type": "DateTime",
+              "name": "CurrentDate",
+              "label": "Date",
+              "category": "calendar",
+              "tags": [],
+              "groupNames": []
+            },
+            "widgets": []
+          },
+          {
+            "widgetId": "0201",
+            "type": "Text",
+            "label": "Group Demo",
+            "icon": "firstfloor",
+            "mappings": [],
+            "linkedPage":
+            {
+              "id": "0201",
+              "title": "Group Demo",
+              "icon": "firstfloor",
+              "link": "/rest/sitemaps/demos/0201",
+              "leaf": false,
+              "timeout": false,
+              "widgets": [
+                {
+                  "widgetId": "020100",
+                  "type": "Switch",
+                  "label": "",
+                  "icon": "switch",
+                  "mappings": [
+                    {
+                      "command": "OFF",
+                      "label": "All Off"
+                    }
+                  ],
+                  "item":
+                  {
+                    "members": [],
+                    "groupType": "Switch",
+                    "function":
+                    {
+                      "name": "OR",
+                      "params": ["ON", "OFF"]
+                    },
+                    "link": "/rest/items/Lights",
+                    "state": "",
+                    "editable": false,
+                    "type": "Group",
+                    "name": "Lights",
+                    "label": "All Lights",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "020101",
+                  "type": "Group",
+                  "label": "",
+                  "icon": "heating",
+                  "mappings": [],
+                  "item":
+                  {
+                    "members": [],
+                    "groupType": "Switch",
+                    "function":
+                    {
+                      "name": "OR",
+                      "params": ["ON", "OFF"]
+                    },
+                    "link": "/rest/items/Heating",
+                    "state": "",
+                    "editable": false,
+                    "type": "Group",
+                    "name": "Heating",
+                    "label": "No. of Active Heatings",
+                    "category": "heating",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "linkedPage":
+                  {
+                    "id": "020101",
+                    "title": "No. of Active Heatings [(1)]",
+                    "icon": "heating",
+                    "link": "/rest/sitemaps/demos/020101",
+                    "leaf": true,
+                    "timeout": false,
+                    "widgets": [
+                      {
+                        "widgetId": "Heating_FF_Bath",
+                        "type": "Switch",
+                        "label": "Bath",
+                        "icon": "heating",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Heating_FF_Bath",
+                          "state": "",
+                          "editable": false,
+                          "type": "Switch",
+                          "name": "Heating_FF_Bath",
+                          "label": "Bath",
+                          "category": "heating",
+                          "tags": ["HVAC"],
+                          "groupNames": ["FF_Bath", "Heating"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Heating_FF_Bed",
+                        "type": "Switch",
+                        "label": "Bedroom",
+                        "icon": "heating",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Heating_FF_Bed",
+                          "state": "",
+                          "editable": false,
+                          "type": "Switch",
+                          "name": "Heating_FF_Bed",
+                          "label": "Bedroom",
+                          "category": "heating",
+                          "tags": ["HVAC"],
+                          "groupNames": ["FF_Bed", "Heating"]
+                        },
+                        "widgets": []
+                      }
+                    ]
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "020102",
+                  "type": "Group",
+                  "label": "",
+                  "icon": "contact",
+                  "mappings": [],
+                  "item":
+                  {
+                    "members": [],
+                    "groupType": "Contact",
+                    "function":
+                    {
+                      "name": "OR",
+                      "params": ["OPEN", "CLOSED"]
+                    },
+                    "link": "/rest/items/Windows",
+                    "state": "",
+                    "editable": false,
+                    "type": "Group",
+                    "name": "Windows",
+                    "label": "Open windows",
+                    "category": "contact",
+                    "tags": [],
+                    "groupNames": []
+                  },
+                  "linkedPage":
+                  {
+                    "id": "020102",
+                    "title": "Open windows [(0)]",
+                    "icon": "contact",
+                    "link": "/rest/sitemaps/demos/020102",
+                    "leaf": true,
+                    "timeout": false,
+                    "widgets": [
+                      {
+                        "widgetId": "Window_FF_Bath",
+                        "type": "Text",
+                        "label": "",
+                        "icon": "contact",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Window_FF_Bath",
+                          "state": "",
+                          "transformedState": "",
+                          "editable": false,
+                          "type": "Contact",
+                          "name": "Window_FF_Bath",
+                          "label": "Bath",
+                          "tags": ["Window"],
+                          "groupNames": ["FF_Bath", "Windows"]
+                        },
+                        "widgets": []
+                      },
+                      {
+                        "widgetId": "Window_FF_Bed",
+                        "type": "Text",
+                        "label": "",
+                        "icon": "contact",
+                        "mappings": [],
+                        "item":
+                        {
+                          "link": "/rest/items/Window_FF_Bed",
+                          "state": "",
+                          "transformedState": "",
+                          "editable": false,
+                          "type": "Contact",
+                          "name": "Window_FF_Bed",
+                          "label": "Bedroom",
+                          "tags": ["Window"],
+                          "groupNames": ["FF_Bed", "Windows"]
+                        },
+                        "widgets": []
+                      }
+                    ]
+                  },
+                  "widgets": []
+                },
+                {
+                  "widgetId": "020103",
+                  "type": "Text",
+                  "label": "",
+                  "icon": "temperature",
+                  "mappings": [],
+                  "item":
+                  {
+                    "members": [],
+                    "groupType": "Number",
+                    "function":
+                    {
+                      "name": "AVG"
+                    },
+                    "link": "/rest/items/Temperature",
+                    "state": "",
+                    "editable": false,
+                    "type": "Group",
+                    "name": "Temperature",
+                    "label": "Avg. Room Temperature",
+                    "category": "temperature",
+                    "tags": [],
+                    "groupNames": ["Status"]
+                  },
+                  "widgets": []
+                }
+              ]
+            },
+            "widgets": []
+          },
+          {
+            "widgetId": "0202",
+            "type": "Text",
+            "label": "Widget Overview",
+            "icon": "chart",
+            "mappings": [],
+            "linkedPage":
+            {
+              "id": "0202",
+              "title": "Widget Overview",
+              "icon": "chart",
+              "link": "/rest/sitemaps/demos/0202",
+              "leaf": false,
+              "timeout": false,
+              "widgets": [
+                {
+                  "widgetId": "020200",
+                  "type": "Frame",
+                  "label": "Binary Widgets",
+                  "icon": "frame",
+                  "mappings": [],
+                  "widgets": [
+                    {
+                      "widgetId": "02020000",
+                      "type": "Switch",
+                      "label": "Toggle Switch",
+                      "icon": "switch",
+                      "mappings": [],
+                      "item":
+                      {
+                        "link": "/rest/items/DemoSwitch",
+                        "state": "",
+                        "editable": false,
+                        "type": "Switch",
+                        "name": "DemoSwitch",
+                        "label": "Switch",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "02020001",
+                      "type": "Switch",
+                      "label": "Button Switch",
+                      "icon": "switch",
+                      "mappings": [
+                        {
+                          "command": "ON",
+                          "label": "On"
+                        }
+                      ],
+                      "item":
+                      {
+                        "link": "/rest/items/DemoSwitch",
+                        "state": "",
+                        "editable": false,
+                        "type": "Switch",
+                        "name": "DemoSwitch",
+                        "label": "Switch",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    }
+                  ]
+                },
+                {
+                  "widgetId": "020201",
+                  "type": "Frame",
+                  "label": "Discrete Widgets",
+                  "icon": "frame",
+                  "mappings": [],
+                  "widgets": [
+                    {
+                      "widgetId": "02020100",
+                      "type": "Selection",
+                      "label": "Scene Selection",
+                      "icon": "sofa",
+                      "mappings": [
+                        {
+                          "command": "0",
+                          "label": "off"
+                        },
+                        {
+                          "command": "1",
+                          "label": "TV"
+                        },
+                        {
+                          "command": "2",
+                          "label": "Dinner"
+                        },
+                        {
+                          "command": "3",
+                          "label": "Reading"
+                        }
+                      ],
+                      "item":
+                      {
+                        "link": "/rest/items/Scene_General",
+                        "state": "",
+                        "editable": false,
+                        "type": "Number",
+                        "name": "Scene_General",
+                        "label": "Scene",
+                        "category": "sofa",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "02020101",
+                      "type": "Switch",
+                      "label": "Scene",
+                      "icon": "sofa",
+                      "mappings": [
+                        {
+                          "command": "1",
+                          "label": "TV"
+                        },
+                        {
+                          "command": "2",
+                          "label": "Dinner"
+                        },
+                        {
+                          "command": "3",
+                          "label": "Reading"
+                        }
+                      ],
+                      "item":
+                      {
+                        "link": "/rest/items/Scene_General",
+                        "state": "",
+                        "editable": false,
+                        "type": "Number",
+                        "name": "Scene_General",
+                        "label": "Scene",
+                        "category": "sofa",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "02020102",
+                      "type": "Setpoint",
+                      "label": "",
+                      "icon": "temperature",
+                      "mappings": [],
+                      "minValue": 16,
+                      "maxValue": 28,
+                      "step": 0.5,
+                      "item":
+                      {
+                        "link": "/rest/items/Temperature_Setpoint",
+                        "state": "",
+                        "editable": false,
+                        "type": "Dimmer",
+                        "name": "Temperature_Setpoint",
+                        "label": "Temperature",
+                        "category": "temperature",
+                        "tags": ["Temperature", "TargetTemperature", "Setpoint"],
+                        "groupNames": ["Thermostat"]
+                      },
+                      "widgets": []
+                    }
+                  ]
+                },
+                {
+                  "widgetId": "020202",
+                  "type": "Frame",
+                  "label": "Percent-based Widgets",
+                  "icon": "frame",
+                  "mappings": [],
+                  "widgets": [
+                    {
+                      "widgetId": "02020200",
+                      "type": "Slider",
+                      "label": "",
+                      "icon": "slider",
+                      "mappings": [],
+                      "switchSupport": true,
+                      "sendFrequency": 0,
+                      "item":
+                      {
+                        "link": "/rest/items/DimmedLight",
+                        "state": "",
+                        "editable": false,
+                        "type": "Dimmer",
+                        "name": "DimmedLight",
+                        "label": "Dimmer",
+                        "category": "slider",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "02020201",
+                      "type": "Colorpicker",
+                      "label": "RGB Light",
+                      "icon": "slider",
+                      "mappings": [],
+                      "item":
+                      {
+                        "link": "/rest/items/RGBLight",
+                        "state": "",
+                        "editable": false,
+                        "type": "Color",
+                        "name": "RGBLight",
+                        "label": "RGB Light",
+                        "category": "slider",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "02020202",
+                      "type": "Switch",
+                      "label": "Roller Shutter",
+                      "icon": "rollershutter",
+                      "mappings": [],
+                      "item":
+                      {
+                        "link": "/rest/items/DemoShutter",
+                        "state": "",
+                        "editable": false,
+                        "type": "Rollershutter",
+                        "name": "DemoShutter",
+                        "label": "Roller Shutter",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    },
+                    {
+                      "widgetId": "02020203",
+                      "type": "Slider",
+                      "label": "",
+                      "icon": "rollershutter",
+                      "mappings": [],
+                      "switchSupport": false,
+                      "sendFrequency": 0,
+                      "item":
+                      {
+                        "link": "/rest/items/DemoBlinds",
+                        "state": "",
+                        "editable": false,
+                        "type": "Dimmer",
+                        "name": "DemoBlinds",
+                        "label": "Blinds",
+                        "category": "rollershutter",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    }
+                  ]
+                },
+                {
+                  "widgetId": "020203",
+                  "type": "Frame",
+                  "label": "Map/Location",
+                  "icon": "frame",
+                  "mappings": [],
+                  "widgets": [
+                    {
+                      "widgetId": "02020300",
+                      "type": "Mapview",
+                      "label": "Berlin",
+                      "icon": "movecontrol",
+                      "mappings": [],
+                      "height": 10,
+                      "item":
+                      {
+                        "link": "/rest/items/DemoLocation",
+                        "state": "",
+                        "editable": false,
+                        "type": "Location",
+                        "name": "DemoLocation",
+                        "label": "Berlin",
+                        "tags": [],
+                        "groupNames": []
+                      },
+                      "widgets": []
+                    }
+                  ]
+                }
+              ]
+            },
+            "widgets": []
+          }
+        ]
+      }
+    ]
+  }
+}

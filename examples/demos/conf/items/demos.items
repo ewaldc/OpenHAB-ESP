@@ -1,0 +1,76 @@
+Group gFF           "First Floor"   <firstfloor>    ["FirstFloor"]
+Group Weather       "Weather"       <sun>
+
+Group Status
+Group Shutters
+
+Group GF_Living     "Living Room"   <video>     (gGF)   ["LivingRoom"]
+Group GF_Kitchen    "Kitchen"       <kitchen>   (gGF)   ["Kitchen"]
+Group GF_Toilet     "Toilet"        <bath>      (gGF)   ["Bathroom"] { synonyms="Toilets,WC,Restroom" }
+Group GF_Corridor   "Corridor"      <corridor>  (gGF)   ["Corridor"]
+
+Group FF_Bath       "Bathroom"      <bath>      (gFF)   ["Bathroom"]
+Group FF_Bed        "Bedroom"       <bedroom>   (gFF)   ["Bedroom"] { synonyms="Master Bedroom" }
+
+/* active groups */
+Group:Switch:OR(ON, OFF)        Lights      "All Lights [(%d)]"
+Group:Switch:OR(ON, OFF)        Heating     "No. of Active Heatings [(%d)]"     <heating>
+Group:Number:AVG                Temperature "Avg. Room Temperature [%.1f °C]"   <temperature>   (Status)
+Group:Contact:OR(OPEN, CLOSED)  Windows     "Open windows [(%d)]"               <contact>
+
+/* Lights */
+Switch Light_FF_Bath_Ceiling        "Ceiling"       (FF_Bath, Lights)       ["Light"]
+Switch Light_FF_Bath_Mirror         "Mirror"        (FF_Bath, Lights)       ["Light"]
+
+
+/* Heating */
+Switch Heating_FF_Bath              "Bath"          <heating>   (FF_Bath, Heating)      ["HVAC"]
+Switch Heating_FF_Bed               "Bedroom"       <heating>   (FF_Bed, Heating)       ["HVAC"]
+
+/* Rollershutters */
+Rollershutter Shutter_FF_Bed            "Bedroom"       (FF_Bed, Shutters)      ["Blinds"]
+Rollershutter Shutter_FF_Bath           "Bath"          (FF_Bath, Shutters)     ["Blinds"]
+
+Switch Shutter_all
+
+/* Indoor Temperatures */
+Number Temperature_FF_Bath      "Bath [%.1f °C]"            <temperature>   (Temperature, FF_Bath)      ["Temperature", "Measurement"]
+Number Temperature_FF_Bed       "Bedroom [%.1f °C]"         <temperature>   (Temperature, FF_Bed)       ["Temperature", "Measurement"]
+
+/* Windows */
+Contact Window_FF_Bath          "Bath [MAP(en.map):%s]"                       (FF_Bath, Windows)        ["Window"]
+Contact Window_FF_Bed           "Bedroom [MAP(en.map):%s]"                    (FF_Bed, Windows)         ["Window"]
+
+Group Weather_Chart
+Number Weather_Temperature      "Outside Temperature [%.1f °C]" <temperature> (Weather, Weather_Chart) { channel="yahooweather:weather:berlin:temperature" }
+Number Weather_Temp_Max         "Todays Maximum [%.1f °C]"      <temperature> (Weather, Weather_Chart)
+Number Weather_Temp_Min         "Todays Minimum [%.1f °C]"      <temperature> (Weather, Weather_Chart)
+Number Weather_Chart_Period     "Chart Period"
+DateTime Weather_LastUpdate     "Last Update [%1$ta %1$tR]"     <clock>
+Number:Angle Sun_Elevation      "Sun Elevation"                 <sun>       { channel = "astro:sun:home:position#elevation" }
+Number:Angle Sun_Azimuth        "Sun Azimuth"                   <sun>       { channel = "astro:sun:home:position#azimuth" }
+DateTime Sunrise_Time           "Sunrise [%1$tH:%1$tM]"         <sunrise>   { channel = "astro:sun:home:rise#start" }
+DateTime Sunset_Time            "Sunset [%1$tH:%1$tM]"          <sunset>    { channel = "astro:sun:home:set#start" }
+Number:Angle Moon_Elevation     "Moon Elevation"                <moon>      { channel = "astro:moon:home:position#elevation" }
+Number:Angle Moon_Azimuth       "Moon Azimuth"                  <moon>      { channel = "astro:moon:home:position#azimuth" }
+String Moon_Phase               "Moon Phase"                    <moon>      { channel = "astro:moon:home:phase#name" }
+
+/* Demo items */
+DateTime CurrentDate            "Date [%1$tA, %1$td.%1$tm.%1$tY]"   <calendar>  { channel="ntp:ntp:demo:dateTime" }
+Switch DemoSwitch               "Switch"
+Dimmer DimmedLight              "Dimmer [%d %%]"                    <slider>
+Color  RGBLight                 "RGB Light"                         <slider>
+Rollershutter DemoShutter       "Roller Shutter"
+Dimmer DemoBlinds               "Blinds [%d %%]"                    <rollershutter>
+Number Scene_General            "Scene"                             <sofa>
+Number Radio_Station            "Radio"                             <network>
+Dimmer Volume                   "Volume [%.1f %%]"
+Location DemoLocation           "Brandenburg Gate Berlin"
+Number Wifi_Level               "Wifi Level [%d/4]"                 <signal>        (FF_Office)
+String ImageURL                 "Image URL [%s]"
+
+Group Thermostat                "Thermostat"            <temperature>                    ["Thermostat"]
+Dimmer Temperature_Setpoint     "Temperature [%.1f °C]" <temperature>    (Thermostat)    ["TargetTemperature", "Setpoint", "Temperature"] { habot="" [ control="knob", min=15, max=35, leftIcon="mdi-thermometer", leftInverted=true ] }
+String Thermostat_Mode          "Thermostat Mode [%s]"  <temperature>    (Thermostat)    ["homekit:HeatingCoolingMode", "Control"]
+
+// vim: syntax=Xtend
