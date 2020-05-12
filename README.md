@@ -105,6 +105,7 @@ A few examples: _setState("CurrentDateTime", "2020-01-19T15:40:41")_, _setState(
 - Only one sitemap is supported by default (mainly due to memory issues), although the code structures are pre-enabled to support multiple sitemaps (e.g. if you have many small ones)
 - Transformed states in native languages are pre-enabled but not yet fully implemented
 - The full demo sitemaps and items can not be run at this time.  They are just a little too large to fit in memory, but a slightly reduced subset "demos" is being provided
+- Titles are not updated in Group Demo
 - Channels are not supported
 - Currently there is no provided _rule engine_. A few options are being evaluated.
 - Chart data is not yet supported

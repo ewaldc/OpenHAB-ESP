@@ -11,5 +11,6 @@ Release
 __vm
 *.7z
 include/secret.h
-include/SSE*.h
-src/SSE*.cpp
+include/SSE*
+include/ESP8266WebServer
+src/SSE*
