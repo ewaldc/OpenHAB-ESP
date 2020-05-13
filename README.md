@@ -16,7 +16,7 @@ The business goals of this project are:
 - to find out whether the OpenHab 2 architecture is flexible and modular enough to be simplified to run on a small device and still deliver useful functionality
 - to make the OpenHab ESP server work with the standard mobile phone clients by implementing a subset of the OpenHab 2 REST API
 - leverage OpenHab icons
-- support initially the Basic UI and perhaps later the PanelUI
+- support initially the Basic UI and perhaps later the HabPanel UI (pre-support is already included)
 - focus on __local functions__: _things_ provided by the ESP, such as sensor data or ESP location which translate to __Items__ and __States__
 - provide a minimal set or __external things__ such an NTP server for providing current date and time  
 - provide an open source code base for others to contribute to (or fork and start your own variant)
