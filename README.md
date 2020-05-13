@@ -66,7 +66,7 @@ You can enable/disable extra debug information by enabling/disabling _OpenHABDeb
 You can also enable debug log information for the ESP8266 Arduino Library (e.g. -D DEBUG_ESP_PORT=Serial -D DEBUG_ESP_HTTP_CLIENT enables debug logging for the HTTP_Client library) 
 
 Working with OpenHab ESP happens in __3 phases__ :
-1. The desired configuration (sitemap, items, icons) is developed on a regular OpenHab 2 server and the UI tested with either the web based Based UI or mobile application.
+1. The desired configuration (sitemap, items, icons) is developed on a regular OpenHab 2 server and the UI tested with either the web based UI or mobile application.
 2. Then, key configuration files like _items_, _sitemaps_, _services_ etc are extracted from the regular, running OpenHab 2 server using the [OpenHab ESP Configuration Generator](https://github.com/ewaldc/OpenHAB_ESP_GenConfig), which copies all generated data to the OpenHab ESP folder development folder.  When done, head over to the OpenHab ESP project
 3. The OpenHab ESP code can now be compiled and executed on the ESP platform. 
 
