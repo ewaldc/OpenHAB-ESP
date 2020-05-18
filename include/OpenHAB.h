@@ -69,7 +69,8 @@ extern "C" {
 #include "libb64/cdecode.h"
 #include <ArduinoJson.h>
 
-#define isValidItemIndex(i) (i != 255)
+#define IllegalIndex 255
+#define isValidIndex(i) (i != IllegalIndex)
 
 // Global parameters for runtime
 enum ContentType: uint8 {IMAGE_SVG = 0, IMAGE_PNG, IMAGE_JPEG, TEXT_PLAIN, TEXT_HTML, TEXT_CSS, APP_JAVASCRIPT, APP_JSON, APP_OCTET_STREAM, AUTO};
@@ -77,14 +78,8 @@ enum ContentType: uint8 {IMAGE_SVG = 0, IMAGE_PNG, IMAGE_JPEG, TEXT_PLAIN, TEXT_
 
 static const char* ContentTypeStr[] PROGMEM = {"image/svg+xml", "image/png", "image/jpeg", "text/plain", "text/html", "text/css", "application/javascript", "application/json", "application/octet-stream"};
 static const char* ContentTypeExt[] PROGMEM = {".svg", ".png", ".jpeg", "", ".html", ".css", ".js", ".json"};
-static const char* ContentTypeArg[] PROGMEM = {"SVG", "PNG", "JPG"};
 static const char* HTTPMethodStr[] PROGMEM = { "HTTP_ANY", "HTTP_GET", "HTTP_HEAD", "HTTP_POST", "HTTP_PUT", "HTTP_PATCH", "HTTP_DELETE", "HTTP_OPTIONS" };
-static ContentType getContentType(const char *ext) {
-	uint8 len = sizeof(ContentTypeExt) / sizeof(ContentTypeExt[0]);
-	for (uint8 i = 0; i < len; i++)
-		if (!strcmp_P(ext, ContentTypeExt[i])) return (ContentType) i;
-	return APP_OCTET_STREAM;
-}
+
 inline const char* PROGMEM getContentTypeStr(ContentType contentType) { return ContentTypeStr[contentType]; }
 inline const char* PROGMEM getContentTypeExt(ContentType contentType) { return ContentTypeExt[contentType]; }
 
@@ -106,13 +101,12 @@ using namespace std;
 #define uint16 unsigned short
 #define String std::string
 
+static const char *ItemTypeString[] PROGMEM = {"ItemNull", "ItemCall", "ItemColor", "ItemContact", "ItemDateTime", "ItemDimmer", "ItemGroup", "ItemLocation", "ItemNumber", "ItemNumber_Angle",
+	"ItemRollerShutter", "ItemString", "ItemSwitch"};
 #endif // OPENHAB_GEN_CONFIG
 
 enum ItemType : uint16 {ItemNull = 0, ItemCall, ItemColor, ItemContact, ItemDateTime, ItemDimmer, ItemGroup, ItemLocation, ItemNumber, ItemNumber_Angle,
 	ItemRollerShutter, ItemString, ItemSwitch};
-/*static const char *ItemTypeString[] PROGMEM = {"ItemNull", "ItemCall", "ItemColor", "ItemContact", "ItemDateTime", "ItemDimmer", "ItemGroup", "ItemLocation", "ItemNumber", "ItemNumber_Angle", \
-	"ItemRollerShutter", "ItemString", "ItemSwitch"};
-*/
 static const char *ItemTypeStr[] PROGMEM = {"", "Call", "Color", "Contact", "DateTime", "Dimmer", "Group", "Location", "Number", "Number:Angle",
 	"Rollershutter", "String", "Switch"};
 enum GroupFunction : uint8 {FunctionNone = 0, FunctionAVG, FunctionOR};
@@ -202,11 +196,6 @@ ICACHE_FLASH_ATTR static void wifiEventHandler(System_Event_t *event) {
 
 class OpenHab {
 public:
-	struct Page {
-		const char *pageId;
-		const JsonVariant obj;
-		Page *next;
-	};
 	struct ItemReference {				// Alternative object pointing to the same item
 		const char *pageId;
 		const JsonVariant obj;			
@@ -218,8 +207,10 @@ public:
 		ItemType type;					// Item type
 		uint8_t refCount;				// Number of references to the same item
 		uint8_t groupIdx;				// For groups, index of Group data (groups)
+		uint8_t pageIdx;				// For groups, index of Group data (groups)
 		const char *state;				// Initial state of item
-		const char* labelFormat;		// Label in C/C++ sprintf format
+		const char *labelFormat;		// Label in C/C++ sprintf format
+
 #ifdef OPENHAB_GEN_CONFIG
 		Group *group;
 		Item *next;
@@ -230,7 +221,6 @@ public:
 	struct Sitemap {
 		const char *name;
 		DynamicJsonDocument jsonDoc;
-		Page *pageList;
 		//Sitemap *next;
 	};
 	struct ItemList {
@@ -256,8 +246,7 @@ public:
 		uint32_t clientIP;
 		WiFiClient client;
 		String uuidStr;
-		const char *sitemap;
-		const char *pageId;
+		uint8_t pageIdx;
 		Ticker keepAliveTimer;
 	};
 
@@ -276,12 +265,12 @@ public:
 	void setState(const char *itemName, const char *state, bool updateGroup = true);
 	void setState(uint8_t itemIdx, const char *state, bool updateGroup = true);
 	void setState(uint8_t itemIdx, float f, bool updateGroup = true, uint8 precision = 2);
+	//void debugStates();
 #endif	// OPENHAB_GEN_CONFIG
 	
 protected:
-
 	const int _port;
-	Sitemap *_sitemapList;
+	Sitemap *_sitemap;
 	Item *_itemList;
 	Group *_groupList;
 
@@ -304,6 +293,7 @@ protected:
 	void SSEKeepAlive(Subscription &subscription);
 	void SSEdisconnect(WiFiClient client, Subscription &subscription);
 	uint8_t getItemIdx(const char *name);
+	uint8_t getPageIdx(const char *name);
 	void updateItem(const JsonVariant itemObj, const JsonVariant widgetObj, const char *pageId);
 	float functionAVG(uint8_t *groupItems, uint8_t count);
 	const char *functionOR(uint8_t groupIdx, uint8_t itemIdx, uint8_t *numItems);
@@ -316,7 +306,7 @@ protected:
 	void SendFile(String fname, ContentType contentType = APP_JSON, const char *pre = nullptr, const char *post  = nullptr);
 	void GetSitemapsFromFS();
 
-	void registerLinkHandlers(const JsonObject obj, const char *pageId, Sitemap *sitemap);
+	void registerLinkHandlers(const JsonObject obj, const char *pageId);
 	void handleSitemaps(Sitemap *sitemapList);
 	void handleAll(), handleSubscribe(), handleNotFound();
 	void handleSitemap(const char *uri);
@@ -325,14 +315,16 @@ protected:
 	void handleItem(const char *uri);
 
 #else // OPENHAB_GEN_CONFIG
+	const char *Pages[256];
 	void GetSitemap(const char *uriBase, const char *sitemap);
 	void GetREST(const char *uriBase, String path, const char* restURI);
-	void GenSitemap(const JsonVariant prototype, Sitemap *sitemap, size_t uriBaseLen);
+	void GenSitemap(const JsonVariant prototype, Sitemap *sitemap, const char *pageId, size_t uriBaseLen);
 
 	Group *newGroup(const char *name, Item *item, JsonObject obj, ItemType type);
 	Group *addItemToGroup(const char *name, Item *item, JsonObject obj);
 	Group *getGroup(const char *name);
 	Item *getItem(const char *name);
+	uint8_t getPageIdx(const char *name);
 #endif // OPENHAB_GEN_CONFIG
 
 	DynamicJsonDocument getJsonDocFromFile(String fileName); // DeserializationError& error);

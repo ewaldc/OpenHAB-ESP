@@ -1,17 +1,18 @@
 #include "OpenHAB.h"
 // Following two variables are defined in main.h and included in main.cpp
-extern const uint8_t itemCount;
-extern const uint8_t groupCount;
+extern const uint8_t itemCount, groupCount, pageCount;
 extern OpenHab::Item items[];
 extern OpenHab::ItemReference *itemRef[];
 //extern OpenHab::ItemState itemStates[];
 extern char *itemStates[];
 extern OpenHab::Group groups[];
+extern const char* pages[];
+extern JsonObject pageObj[];
 
 //OpenHab::OpenHab(Item *items, unsigned short itemCount, const int port) : 
 OpenHab::OpenHab(const int port) : 
 	_port(port),
-	_sitemapList(nullptr),
+	_sitemap(nullptr),
 	_itemList(nullptr),
 	_groupList(nullptr),
 	_server(port),
@@ -39,7 +40,7 @@ uint8_t OpenHab::getItemIdx(const char *name) {
 		else if (cmp < 0) first = middle + 1;
 		else last = middle - 1;
 	} while (first <= last);
-	return (uint8_t) 255;		
+	return (uint8_t) IllegalIndex;		
 };
 
 const char *OpenHab::functionOR(uint8_t groupIdx, uint8_t itemIdx, uint8_t *numItems) {
@@ -74,6 +75,14 @@ FORCE_INLINE float OpenHab::functionAVG(uint8_t *groupItems, uint8_t count) {
 	return (count) ? avg / count : (float)0.0;
 }
 
+static const char* ContentTypeArg[] PROGMEM = {"SVG", "PNG", "JPG"};
+static ContentType getContentType(const char *ext) {
+	uint8 len = sizeof(ContentTypeExt) / sizeof(ContentTypeExt[0]);
+	for (uint8 i = 0; i < len; i++)
+		if (!strcmp_P(ext, ContentTypeExt[i])) return (ContentType) i;
+	return APP_OCTET_STREAM;
+}
+
 static size_t snprintftime(char *state, char *label, const char *labelFormat, int count = 0) {
 	static char buf[40];    
 	tm tmb;
@@ -90,18 +99,12 @@ inline void setReferenceLabel (const OpenHab::ItemReference *refList, uint8_t co
 }
 
 template <typename T> static void sprf(T state, uint8_t itemIdx) {
-	//static char _prevLabel[128];
 	DbgPrint(F(" --> sprf "));	
 	OpenHab::Item item = getItem(itemIdx);			// Create a Item copy from flash
 	OpenHab::ItemReference *itemref = itemRef[itemIdx];
-	//OpenHab::ItemState &itemState = itemStates[itemIdx];
 	const char *labelFormat = item.labelFormat; // formatted label
 	JsonVariant labelObj = itemref[0].widgetObj[F("label")];
 	char *label = (char *)(labelObj.as<const char *>());  //pointer to last formatted label or nullptr initially
-	//size_t len = (label) ? strlen(label) : 0;
-	//if (len == 0) label = nullptr;
-	//if (len) strncpy(_oldLabel, label, len); 
-	//_oldLabel[len] = 0; // save a copy of old label, assuming < 128 characters
 	DbgPrint(F(" - previous Label: "), label);
 	size_t count = (item.type == ItemDateTime) ? snprintftime(state, label, labelFormat) : snprintf(NULL, 0, labelFormat, state);
 	label = (char *) realloc((void *)label, ++count);
@@ -116,43 +119,36 @@ void OpenHab::updateLabel(uint8_t itemIdx, char *state, ItemType type, int numIt
 	DbgPrint(F(" - updateLabel"));	DbgPrint(F(" - type: "), ItemTypeStr[type]);
 	DbgPrint(F(" - numItems: "), numItems);	DbgPrint(F(" - state: "), state);
 	switch (type) {
-		case ItemContact:
-		case ItemString:
-		case ItemSwitch:
-		case ItemDateTime:
-			sprf(state, itemIdx); break;
 		case ItemDimmer:
 		case ItemNumber:
 		case ItemNumber_Angle:
 			sprf(strtof((state) ? state : "0", NULL), itemIdx); break; // (float)atof(item->state)
 		case ItemGroup:
 			(numItems == -1) ? sprf(atoi(state), itemIdx) : sprf(numItems, itemIdx); break;
-		default:;
+		default:
+			sprf(state, itemIdx); break;
 	}
-
-	//if (_subscriptionCount) SSEBroadcastItemChange(itemStates[itemIdx]);
 }
 
 FORCE_INLINE void OpenHab::setGroupState(const char *groupName) {
 	DbgPrintln(F(" - setGroupState: "), groupName);
 	uint8_t itemIdx = getItemIdx(groupName);
-	if (! isValidItemIndex(itemIdx)) return;	// Invalid item
+	if (! isValidIndex(itemIdx)) return;	// Invalid item
 	Item item = getItem(itemIdx);		// Create a Item copy from flash
 	if (item.type != ItemGroup) return; // Item is not a group
-	//ItemState &itemState = itemStates[itemIdx];
-	char *state = itemStates[itemIdx];
+
 	Group &group = groups[item.groupIdx];
 	if (group.function == FunctionAVG) {
 		setState(itemIdx, functionAVG(group.items, group.itemCount), false);
-		updateLabel(itemIdx, state, group.type);
+		updateLabel(itemIdx, itemStates[itemIdx], group.type);
 	} else if (group.function == FunctionOR) {
 		uint8_t count;
 		char buf[4];	// holds uint8_t
 		setState(itemIdx, functionOR(item.groupIdx, itemIdx, &count), false);
 		sprintf_P(buf, PSTR("%d"), count);
 		updateLabel(itemIdx, buf, item.type, count);
-	}
-	if (_subscriptionCount) SSEBroadcastItemChange(state, "", itemIdx);
+	} else return; // state can not change if not AVG or OR group
+	if (_subscriptionCount) SSEBroadcastItemChange(itemStates[itemIdx], "", itemIdx);
 }
 
 void OpenHab::setCurrentDateTime(uint8_t itemIdx, char *state) {
@@ -171,6 +167,7 @@ void OpenHab::setCurrentDateTime(uint8_t itemIdx, char *state) {
 
 // Function to set and eventually propagate (e.g. label, group state) the state of an item 
 void OpenHab::setState(uint8_t itemIdx, const char *state, bool updateGroup) {
+	static char nullState = '\0';
 	char prevState[64], intState[4];
 	auto handleUpDownState = [&](const char *state, size_t value) {
 		if (strcmp_P(state, PSTR("UP")) == 0) value = (value >= 90) ? 100 : value + 10;
@@ -183,30 +180,34 @@ void OpenHab::setState(uint8_t itemIdx, const char *state, bool updateGroup) {
 
 	DbgPrint(F(" - setState itemIdx: "), itemIdx);
 	DbgPrint(F(" - requested state: "), state);
-	//if (!state) return;							// NULL states can crash setState
-	//ItemState &itemState = itemStates[itemIdx];	// Get current (previous) state
 	Item item = getItem(itemIdx);				// Get Item copy from flash, reading direcly from flash causes misaligned read crashes
 	ItemReference *itemref = itemRef[itemIdx];
 
-	char *itemState = itemStates[itemIdx];	// Get current (previous) state
-	size_t len = (itemState) ? strlen(itemState) + 1: 0;  // Length of old state in order to make a copy
+	const char *itemState = itemStates[itemIdx];	// Get current (previous) state
 	prevState[0] = '\0';
-	strncpy(prevState, itemState, min(len, (size_t)sizeof(prevState)));
+	if (itemState)
+		strncpy(prevState, itemState, min(strlen(itemState) + 1, (size_t)sizeof(prevState)));
 	DbgPrint(F(" - previous state: "), prevState);
-	if ((item.type == ItemRollerShutter) || (item.type == ItemColor)) state = handleUpDownState(state, atoi(prevState));
+	
 	bool isCurrentDateTime = ((item.type == ItemDateTime) && !strncmp_P(item.name, PSTR("Current"), 7)); // item name reflecting current Date/Time?
+	if ((item.type == ItemRollerShutter) || (item.type == ItemColor)) state = handleUpDownState(state, atoi(prevState));
 
-	len = (isCurrentDateTime) ? 24 : strlen(state) + 1;
-	void *p = realloc((void *) itemState, len);	// New state might require more space
-	if (isCurrentDateTime) setCurrentDateTime(itemIdx, (char *) p);	// This is a request to supply the current date and time
-	else if (state) memcpy(p, state, len);							// Replicate the new state
-	DbgPrint(" - new state: ", (char *) p);
-	itemState = (char *) p;
+	size_t len = (isCurrentDateTime) ? 24 : (state) ? strlen(state) + 1 : 0;
+	char *p = (len) ? (char *) realloc((void *) itemState, len) : &nullState;	// New state might require more space
+	if (isCurrentDateTime) setCurrentDateTime(itemIdx, p);	// This is a request to supply the current date and time
+	else if (len) memcpy(p, state, len);					// Replicate the new state
+	DbgPrint(" - new state: ", p);
+	if (!strcmp(p, prevState)) {
+		DbgPrintln(F(" - no state change"));
+		return;	
+	}
+	itemStates[itemIdx] = p;	// Update state
+	//_callback_function(itemIdx);	// call back user code
 
 	itemref[0].obj[F("state")] = (const char *) p;	// Update base reference
 	for (uint8_t n = 1; n <= item.refCount; n++) { 	// Update all other references, if present
 		DbgPrint(F(" - updating reference: "), item.name);
-		DbgPrint(F(" with state: "), (const char *)p );
+		DbgPrint(F(" with state: "), p);
 		itemref[n].obj[F("state")] = (const char *) p;
 	}
 
@@ -215,8 +216,8 @@ void OpenHab::setState(uint8_t itemIdx, const char *state, bool updateGroup) {
 	for (JsonVariant groupName : groupNames)
 		setGroupState(groupName);
 
-	if ((item.type != ItemGroup) && item.labelFormat) updateLabel(itemIdx, (char *)p, item.type);  // finally update the parent label reflecting the new state
-	if (_subscriptionCount) SSEBroadcastItemChange((char *) p, prevState, itemIdx);
+	if ((item.type != ItemGroup) && item.labelFormat) updateLabel(itemIdx, p, item.type);  // finally update the parent label reflecting the new state
+	if (_subscriptionCount) SSEBroadcastItemChange(p, prevState, itemIdx);
 }
 
 // Function to set and eventually propagate (e.g. label, group state) the state of an item with numeric state (e.g. type Number)
@@ -229,7 +230,7 @@ FORCE_INLINE void OpenHab::setState(uint8_t itemIdx, float f, bool updateGroup, 
 
 void OpenHab::setState(const char *itemName, const char *state, bool updateGroup) {\
 	uint8_t itemIdx = getItemIdx(itemName);
-	if (isValidItemIndex(itemIdx))
+	if (isValidIndex(itemIdx))
 		return setState(itemIdx, state, updateGroup);
 	Serial.printf_P(PSTR("PANIC! Invalid item %s\n"), itemName);
 }
@@ -242,7 +243,7 @@ FORCE_INLINE void OpenHab::updateItem(const JsonVariant itemObj, const JsonVaria
 	DbgPrint(F("item name: "), name); 
 	
 	uint8_t itemIdx = getItemIdx(name);
-	if (! isValidItemIndex(itemIdx)) {
+	if (! isValidIndex(itemIdx)) {
 		Serial.printf_P(PSTR("PANIC: item %s not found!!\n"), name);
 		return;
 	}
@@ -272,14 +273,36 @@ FORCE_INLINE void OpenHab::updateItem(const JsonVariant itemObj, const JsonVaria
 	DbgPrintln(F(""));
 }
 
-void OpenHab::registerLinkHandlers(const JsonObject obj, const char *pageId, Sitemap *sitemap) {
-	static Page *lastPage = nullptr;
+/*
+void OpenHab::debugStates() {
+	for (uint8_t i = 0; i < itemCount; i++) {
+		DbgPrint(F("Item: "), i);
+		DbgPrint(F(" - name: "), items[i].name);
+		DbgPrintln(F(" - state: "), itemStates[i]);
+	}
+}
+*/
+
+FORCE_INLINE uint8_t OpenHab::getPageIdx(const char *name) {
+  uint8_t i;
+  for (i = 0; i < pageCount; i++)
+    if (strcmp(pages[i], name) == 0) return i;
+  DbgPrintln("ERROR: page Id not found");
+  return IllegalIndex;
+}
+
+void OpenHab::registerLinkHandlers(const JsonObject obj, const char *pageId) {
+	//static Page *lastPage = nullptr;
 	for (const JsonPair pair : obj) {
 		const char *key = pair.key().c_str();
 		if (!strcmp_P(key, PSTR("linkedPage")) || !strcmp_P(key, PSTR("homepage"))) { // Page
-			JsonObject pageObj = pair.value().as<JsonObject>();
-			pageId = pageObj[F("id")];
+			JsonObject obj = pair.value().as<JsonObject>();
+			pageId = obj[F("id")];
 			DbgPrintln(F("page: "), pageId);
+			uint8_t pageIdx = getPageIdx(pageId);
+			pageObj[pageIdx] = obj;
+			
+			/*
 			Page *page = new Page {pageId, (JsonVariant) pageObj, nullptr};
 			if (lastPage) lastPage->next = page;
 			else { // Homepage, set sitemap name
@@ -287,11 +310,12 @@ void OpenHab::registerLinkHandlers(const JsonObject obj, const char *pageId, Sit
 				sitemap->name = pageId;
 			}
 			lastPage = page;
+			*/
 		} else if (!strcmp_P(key, PSTR("item"))) // Items
 			updateItem(pair.value().as<JsonObject>(), obj, pageId);
 
-		registerLinkHandlers(pair.value().as<JsonObject>(), pageId, sitemap); //, pair.key);
-		for (auto arr : pair.value().as<JsonArray>()) registerLinkHandlers(arr.as<JsonObject>(), pageId, sitemap); //, pair.key);
+		registerLinkHandlers(pair.value().as<JsonObject>(), pageId); //, pair.key);
+		for (auto arr : pair.value().as<JsonArray>()) registerLinkHandlers(arr.as<JsonObject>(), pageId); //, pair.key);
 	}
 }
 
@@ -423,7 +447,7 @@ out:
 		DbgPrintln(F(" - name : "), items[n].name);
 		setState(n, items[n].state);
 	}
-
+	//debugStates();
 	DbgPrintln(F("Exit OpenHab::InitServer"));
 	return true;
 }
@@ -440,18 +464,17 @@ void OpenHab::StartServer() { //
 }
 
 void OpenHab::GetSitemapsFromFS() {
-	DbgPrintln(F("GetSitemapsFromFS"));
-	DbgPrintln(F("free heap memory: "), ESP.getFreeHeap());
+	DbgPrint(F("GetSitemapsFromFS"));
+	DbgPrint(F(" - free heap memory: "), ESP.getFreeHeap());
 	Dir dir = SPIFFS.openDir(F("/conf/sitemaps"));
-	DbgPrintln(F("isDirectory"), dir.isDirectory());
 	while (dir.next()) {
 		String fileName = dir.fileName(); 
-		DbgPrintln(F("GetSitemapsFromFS - file"), fileName);
-		_sitemapList = new Sitemap{nullptr, getJsonDocFromFile(fileName), nullptr}; //, _sitemapList
-		registerLinkHandlers(_sitemapList->jsonDoc.as<JsonObject>(), "", _sitemapList);
+		DbgPrintln(F(" - file"), fileName);
+		_sitemap = new Sitemap{pages[0], getJsonDocFromFile(fileName)}; //, nullptr, _sitemap
+		registerLinkHandlers(_sitemap->jsonDoc.as<JsonObject>(), "");
 		break; //At this moment, allow only one sitemap
 	}
-	DbgPrintln(F("free heap memory @exit: "), ESP.getFreeHeap());
+	DbgPrintln(F(" - free heap memory @exit: "), ESP.getFreeHeap());
 }
 
 void OpenHab::SendJson(JsonVariant obj) {
@@ -483,7 +506,7 @@ void OpenHab::SendFile(String fname, ContentType contentType, const char *pre, c
 		if (contentType == AUTO) {
 			String ext = fname.substring(fname.lastIndexOf('.'));
 			contentType = getContentType(ext.c_str());
-			DbgPrintln(F("AUTO extension:"), ext.c_str());			
+			DbgPrintln(F(" - AUTO extension:"), ext.c_str());			
 		}
 	 	_server.send_P(200, getContentTypeStr(contentType), PSTR(""));
 		//DbgPrintln(F("before pre test"));
@@ -530,11 +553,11 @@ void OpenHab::SendFile(String fname, ContentType contentType, const char *pre, c
 		origin += _port;
 		if (contentType == AUTO) {
 			String ext = fname.substring(fname.lastIndexOf('.'));
-			DbgPrintln(F("AUTO extension:"), ext.c_str());			
+			DbgPrint(F(" - AUTO extension:"), ext.c_str());			
 			contentType = getContentType(ext.c_str());
 		}
 		DbgPrintln(F(" - with contentType: "), getContentTypeStr(contentType));
-		_server.sendHeader(F("Access-Control-Allow-Origin"), PSTR("*"), true);
+		//_server.sendHeader(F("Access-Control-Allow-Origin"), PSTR("*"), true);
 		_server.sendHeader(F("Location"), location, true);
 	 	_server.send_P(302, getContentTypeStr(contentType), PSTR(""));
 	} else DbgPrintln(F("File not found"));
@@ -547,7 +570,7 @@ ICACHE_FLASH_ATTR void OpenHab::handleNotFound() {
 
 // While the data structures allow for multiple sitemaps (sitemap list), only one is supported for now
 ICACHE_FLASH_ATTR void OpenHab::handleSitemaps(Sitemap *sitemap) {
-	DbgPrintln(F("handleSiteMaps"));
+	DbgPrintln(F("handleSitemaps"));
 	String fileName = F("/conf/sitemaps/");
 	fileName += sitemap->name; 
 	SendFile(fileName, APP_JSON, PSTR("["), PSTR("]"));
@@ -557,22 +580,25 @@ void OpenHab::handleSitemap(const char *uri) {
 	//DbgPrintRequest(F("handleSitemap"));
 	while (uri && *uri++ != '/');
 	DbgPrintln(F("handleSitemap - "), uri);
-
-	Sitemap *sitemap = _sitemapList;
+	for (uint8_t i = 0; i < pageCount; i++)
+		if (strcmp_P(pages[i], uri) == 0) 
+			return SendJson(pageObj[i]);
+		/*
 		Page *page = sitemap->pageList;
 		while (page) {
 			//DbgPrintln(F("page: "), page->pageId);
 			if (strcmp(page->pageId, uri) == 0) 
 				return SendJson(page->obj);
 			page = page->next;
-		}
+		} */
 	handleNotFound(); 
 }
 
 void OpenHab::handleItem(const char *uri) {
+	DbgPrintln(F("handleItem - "), uri);
+	if (*uri == '\0') return SendFile(F("/rest/items"));
 	uint8_t itemIdx = getItemIdx(uri);
-	if (!isValidItemIndex(itemIdx)) return handleNotFound();
-	DbgPrint(F("handleItem - "));
+	if (!isValidIndex(itemIdx)) return handleNotFound();
 	if (_server.method() == HTTP_GET) return SendJson(itemRef[itemIdx][0].obj);
 	else if (_server.method() == HTTP_POST) {  // Item has changed
 		DbgPrintRequest(F("handleItem - POST request: "));
@@ -580,8 +606,7 @@ void OpenHab::handleItem(const char *uri) {
 			//const char *state = _server.arg(F("plain")).c_str();
 			const char *state = _server.arg(0).c_str();
 			setState(itemIdx, state);		// change state and labels
-			DbgPrint(F(" - new state:"), state);
-			//_callback_function(itemIdx);	// call back user code
+			DbgPrint(F(" - new state:"), itemStates[itemIdx]);
 		//}
 		_server.send_P(200, PSTR("text/plain"), NULL);
 	}
@@ -643,7 +668,7 @@ void OpenHab::handleSubscribe() {
 	for (channel = 0; channel < SSE_MAX_CHANNELS; channel++) // Find first free slot
 		if (!_subscription[channel].clientIP) break;
 
-	_subscription[channel] = {(uint32_t) clientIP, _server.client(), ESP8266TrueRandom.uuidToString(uuid), nullptr, nullptr, Ticker()};
+	_subscription[channel] = {(uint32_t) clientIP, _server.client(), ESP8266TrueRandom.uuidToString(uuid), IllegalIndex, Ticker()};
 	strcat(buf, _subscription[channel].uuidStr.c_str());
 	DbgPrint(F(" - allocated channel "), channel);	
 	DbgPrintln(F(" on uri "), buf);	
@@ -657,8 +682,7 @@ void OpenHab::handleSubscribe() {
 }
 
 void OpenHab::SSEdisconnect(WiFiClient client, Subscription &subscription) {
-	Serial.print(PSTR(" - client no longer connected, remove subscription for page: "));
-	Serial.println(subscription.pageId);
+	DbgPrintln(F(" - client no longer connected, remove subscription for page: "), subscription.pageIdx);
 	client.flush();
 	client.stop();
 	subscription.clientIP = 0;
@@ -669,18 +693,19 @@ void OpenHab::SSEdisconnect(WiFiClient client, Subscription &subscription) {
 void OpenHab::SSEBroadcastItemChange(const char *state, const char *prevState, uint8_t itemIdx) {
 	Item item = getItem(itemIdx);			// Create a Item copy from flash
 	ItemReference *itemref = itemRef[itemIdx];
-	//DbgPrint(F("SSEBroadcastItemChange for item: "), item.name);
-	//DbgPrintln(F(" - with (new) state: "), state);
+	DbgPrint(F("SSEBroadcastItemChange for item: "), item.name);
+	DbgPrintln(F(" - with (new) state: "), state);
 	for (uint8_t channel = 0; channel < SSE_MAX_CHANNELS; channel++) {
 		//DbgPrintln(F("channel: "), channel);
-		if (!_subscription[channel].clientIP) continue;	// Skip unallocated channels
-	    WiFiClient client = _subscription[channel].client;
-    	String IPaddrstr = IPAddress(_subscription[channel].clientIP).toString();
-    	if (client.connected()) {	// Only broadcast if client still connected
-			if (_subscription[channel].pageId) {	// Basic UI
+		Subscription &subscription = _subscription[channel];
+		if (!subscription.clientIP) continue;	// Skip unallocated channels
+	    WiFiClient client = subscription.client;
+    	String IPaddrstr = IPAddress(subscription.clientIP).toString();
+    	if (subscription.client.connected()) {	// Only broadcast if client still connected
+			if (isValidIndex(subscription.pageIdx)) {	// Basic UI
 				uint8_t refCount = item.refCount;
 				for (uint8_t n = 0; n <= refCount; n++)
-					if (!strcmp(_subscription[channel].pageId, itemref[n].pageId)) { // finds a matching pageId
+					if (!strcmp_P(pages[subscription.pageIdx], itemref[n].pageId)) { // finds a matching pageId
 						String itemStr;
 						DbgPrint(F("Broadcast Basic UI page change to client IP: "), IPaddrstr.c_str());
 						DbgPrint(F(" on channel: "), channel);
@@ -690,9 +715,9 @@ void OpenHab::SSEBroadcastItemChange(const char *state, const char *prevState, u
 						serializeJson(itemref[n].obj, itemStr);
 						int offset = itemStr.indexOf(F("\"state\":"));
 						//DbgPrintln(F("item: "), itemStr.substring(offset));
-						client.printf_P(PSTR("event: event\ndata: {\"widgetId\":\"%s\",\"label\":\"%s\",\"visibility\":true,\"item\":{%s,\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\n\n"),
+						subscription.client.printf_P(PSTR("event: event\ndata: {\"widgetId\":\"%s\",\"label\":\"%s\",\"visibility\":true,\"item\":{%s,\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\n\n"),
 							itemref[n].widgetObj[F("widgetId")].as<const char *>(), itemref[n].widgetObj[F("label")].as<const char *>(), 
-							itemStr.substring(offset).c_str(), _subscription[channel].sitemap, _subscription[channel].pageId);
+							itemStr.substring(offset).c_str(), pages[0], pages[subscription.pageIdx]);
 						/*
 						Serial.printf_P(PSTR("event: event\ndata: {\"widgetId\":\"%s\",\"label\":\"%s\",\"visibility\":true,\"item\":{%s,\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\n\n"), \
 							itemRef[n].widgetObj[F("widgetId")].as<const char *>(), itemRef[n].widgetObj[F("label")].as<const char *>(), \
@@ -701,8 +726,8 @@ void OpenHab::SSEBroadcastItemChange(const char *state, const char *prevState, u
 					}
 			} else { // HabPanel UI
 				const char *typeStr = itemref[0].obj[F("type")];
-				DbgPrint(F("Broadcast HabPanel UI page change to client IP: "), IPaddrstr.c_str());
-				client.printf_P(PSTR("event: message\ndata: {\"topic\":\"smarthome/items/%s/statechanged\",\"payload\":\"{\\\"type\\\":\\\"%s\\\",\\\"value\\\":\\\"%s\\\",\\\"oldType\\\":\\\"%s\\\",\\\"oldValue\\\":\\\"%s\\\"}\",\"type\":\"ItemStateChangedEvent\"}\n\n"),
+				DbgPrintln(F("Broadcast HabPanel UI page change to client IP: "), IPaddrstr.c_str());
+				subscription.client.printf_P(PSTR("event: message\ndata: {\"topic\":\"smarthome/items/%s/statechanged\",\"payload\":\"{\\\"type\\\":\\\"%s\\\",\\\"value\\\":\\\"%s\\\",\\\"oldType\\\":\\\"%s\\\",\\\"oldValue\\\":\\\"%s\\\"}\",\"type\":\"ItemStateChangedEvent\"}\n\n"),
 					itemref[0].obj[F("name")].as<const char *>(), typeStr,
 					itemref[0].widgetObj[F("label")].as<const char *>(), typeStr, prevState);
 				/*
@@ -711,19 +736,20 @@ void OpenHab::SSEBroadcastItemChange(const char *state, const char *prevState, u
 					itemref[0].widgetObj[F("label")].as<const char *>(), typeStr, prevState);
 				*/
 			}
-		} else SSEdisconnect(client, _subscription[channel]);
+		} else SSEdisconnect(subscription.client, subscription);
 	}
 }
 
 void OpenHab::SSEKeepAlive(Subscription &subscription) {
-	DbgPrint(F("SSEKeepAlive for IP: "), subscription.clientIP);
-    WiFiClient client = subscription.client;  
-	if (client.connected()) {
-		if (subscription.pageId) {
-			DbgPrintln(F(" - client is still connected - pageId: "), subscription.pageId);
-			client.printf_P(PSTR("event: event\ndata: { \"TYPE\":\"ALIVE\",\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\n\n"), subscription.sitemap, subscription.pageId);
-		} 
-	} else SSEdisconnect(client, subscription);
+	if (subscription.client.connected()) {
+		String IPaddrstr = IPAddress(subscription.clientIP).toString();
+		DbgPrint(F("SSEKeepAlive for IP: "), IPaddrstr);
+		if (isValidIndex(subscription.pageIdx)) {  // Basic UI
+			DbgPrintln(F(" - Basic UI client is still connected - pageId: "), pages[subscription.pageIdx]);
+			subscription.client.printf_P(PSTR("event: event\ndata: { \"TYPE\":\"ALIVE\",\"sitemapName\":\"%s\",\"pageId\":\"%s\"}\n\n"),
+				pages[0], pages[subscription.pageIdx]);
+		} else DbgPrintln(F(" - HabPanel UI client is still connected"));
+	} else SSEdisconnect(subscription.client, subscription);
 }
 
 void OpenHab::handleSSEAll(const char *uri, bool isHabPanel) {
@@ -754,20 +780,29 @@ void OpenHab::handleSSEAll(const char *uri, bool isHabPanel) {
    		DbgPrintln(F(" - No free slots or unregistered client attempts to listen\n"));
 	   	return handleNotFound();
  	}
-	DbgPrintln(F(" - reserving channel: "), channel);	
+	DbgPrint(F(" - reserving channel: "), channel);	
 	_subscription[channel].client = client; // update client
 
 	if (isHabPanel) {
 		_subscriptionCount++;
-		_subscription[channel] = {(uint32_t) clientIP, _server.client(), PSTR(""), nullptr, nullptr, Ticker()};
+		_subscription[channel] = {(uint32_t) clientIP, _server.client(), PSTR(""), IllegalIndex, Ticker()};
 	} else {
-		_subscription[channel].sitemap =  (strcmp((_server.arg(0)).c_str(), _sitemapList->name)) ? nullptr : _sitemapList->name;
-		DbgPrint(F("Sitemap: "), _subscription[channel].sitemap);	
+		if (strcmp_P((_server.arg(0)).c_str(), pages[0])) {
+			DbgPrintln(F("ERROR unknown sitemap: "), (_server.arg(0)).c_str());	
+			return;
+		}
+		DbgPrint(F(" for sitemap: "), pages[0]);	
 		const char *pageId = (_server.arg(1)).c_str();
-		Page *page = _sitemapList->pageList;
-		while (page && (strcmp(page->pageId, pageId))) page = page->next;
-		_subscription[channel].pageId = (page) ? page->pageId : nullptr;
-		DbgPrintln(F(" - pageid: "), _subscription[channel].pageId);
+		uint8_t pageIdx = getPageIdx(pageId);
+		if (pageIdx == IllegalIndex) {
+			DbgPrintln(F("ERROR unknown pageId: "), pageId);	
+			return;
+		}
+		//Page *page = _sitemap->pageList;
+		//while (page && (strcmp(page->pageId, pageId))) page = page->next;
+		//_subscription[channel].pageId = (page) ? page->pageId : nullptr;
+		_subscription[channel].pageIdx = pageIdx;
+		DbgPrintln(F(" and pageid: "), pageId);
 	}
 
 	_server.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -789,7 +824,7 @@ void OpenHab::handleAll() {
 	if (strncmp_P(uri, PSTR("/rest/items/"), 12) == 0) return handleItem(uri + 12);
 	if (strncmp_P(uri, PSTR("/rest/sitemaps/events/"), 22) == 0) return handleSSEAll(uri + sizeof("/rest/sitemaps/events"));
 	if (strncmp_P(uri, PSTR("/rest/sitemaps/"), 15) == 0) return handleSitemap(uri + sizeof("/rest/sitemaps"));
-	if (strcmp_P(uri, PSTR("/rest/sitemaps")) == 0)	return handleSitemaps(_sitemapList);
+	if (strcmp_P(uri, PSTR("/rest/sitemaps")) == 0)	return handleSitemaps(_sitemap);
 	if (strcmp_P(uri, PSTR("/rest/events")) == 0) return handleSSEAll(uri, true);
 	if (strcmp_P(uri, PSTR("/chart")) == 0)	return SendFile(strcat_P((char *)uri, getContentTypeExt(IMAGE_PNG)), IMAGE_PNG);
 	if (strncmp_P(uri, PSTR("/static/"), 8) == 0) return SendFile(uri, AUTO);
