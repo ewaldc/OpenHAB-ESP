@@ -74,10 +74,11 @@ Working with OpenHab ESP happens in __3 phases__ :
 
 1. Download or clone the repository
 1. Install VSCode and PlatformIO extension (Linux/Windows (portable))
-1. Head over to the [OpenHab ESP Configuration Generator](https://github.com/ewaldc/OpenHAB_ESP_GenConfig), compile and run the generator
+1. _Optional_: Design your sitemap, HabPanel, items etc. Alternatively, leverage the demo.
+1. _Optional_: Head over to the [OpenHab ESP Configuration Generator](https://github.com/ewaldc/OpenHAB_ESP_GenConfig), compile and run the generator which will copy/process all needed files such as sitemap, items, etc. Alternatively, leverage the demo.
 1. Head back to the OpenHab ESP project, which has now be complemented by the generated configuration files and is almost ready to run.
 1. Copy _include/secrets_example.h_ to _include/secrets.h_ and customize it to support your WiFi SSID's, ESP name, passwords and MAC addresses. You will find more information embedded in the file
-1. Manually add all extra data files needed to the _/data_ folder such as custom icons.  If any file exceeds the 32 characters limit for the total file name (including the folder name(s)), you will need a special version of the platformio spiffs uploader which support 64 bytes path names (see below). All icon types supported by OpenHab 2 (svg, png, jpg) are also supported by OpenHab ESP. 
+1. _Optional_: Manually add all extra data files needed to the _/data_ folder such as custom icons.  If any file exceeds the 32 characters limit for the total file name (including the folder name(s)), you will need a special version of the platformio spiffs uploader which support 64 bytes path names (see below). All icon types supported by OpenHab 2 (svg, png, jpg) are also supported by OpenHab ESP. 
 1. Once complete, use the PlatformIO _Upload File System Image_ extension to upload the configuration data to the ESP SPIFFS based flash file system. 
 1. Modify _src/main.cpp_ with the _port_of your ESP OpenHab 2 server_ and add your code and rules to set or modify the state of all Items that correspond with your sensors or application use case (see below).  This can be also done in seperate (include) files as desired.  
 1. Compile the code and upload.
