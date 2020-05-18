@@ -265,7 +265,7 @@ public:
 	void setState(const char *itemName, const char *state, bool updateGroup = true);
 	void setState(uint8_t itemIdx, const char *state, bool updateGroup = true);
 	void setState(uint8_t itemIdx, float f, bool updateGroup = true, uint8 precision = 2);
-	//void debugStates();
+	void debugStates();
 #endif	// OPENHAB_GEN_CONFIG
 	
 protected:
@@ -288,7 +288,6 @@ protected:
 	const char **_allowedMAC;
 
 	void setCurrentDateTime(uint8_t itemIdx, char *state);
-	//void SSEBroadcastItemChange(ItemState &itemState, const char *prevState = nullptr);
 	void SSEBroadcastItemChange(const char* state, const char *prevState, uint8_t itemIdx);
 	void SSEKeepAlive(Subscription &subscription);
 	void SSEdisconnect(WiFiClient client, Subscription &subscription);
@@ -298,9 +297,7 @@ protected:
 	float functionAVG(uint8_t *groupItems, uint8_t count);
 	const char *functionOR(uint8_t groupIdx, uint8_t itemIdx, uint8_t *numItems);
 	void setGroupState(const char *groupName);
-	//void setState(uint8_t itemIdx, int i, bool updateGroup = true);
 	void updateLabel(uint8_t itemIdx, char *state, ItemType type, int numItems = -1);
-	//Item *getItem(const char *name);
 
 	void SendJson(JsonVariant obj);
 	void SendFile(String fname, ContentType contentType = APP_JSON, const char *pre = nullptr, const char *post  = nullptr);
@@ -318,7 +315,7 @@ protected:
 	const char *Pages[256];
 	void GetSitemap(const char *uriBase, const char *sitemap);
 	void GetREST(const char *uriBase, String path, const char* restURI);
-	void GenSitemap(const JsonVariant prototype, Sitemap *sitemap, const char *pageId, size_t uriBaseLen);
+	void GenSitemap(const JsonVariant prototype, const char *pageId, size_t uriBaseLen);
 
 	Group *newGroup(const char *name, Item *item, JsonObject obj, ItemType type);
 	Group *addItemToGroup(const char *name, Item *item, JsonObject obj);
