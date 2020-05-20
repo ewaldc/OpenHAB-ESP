@@ -5,11 +5,37 @@ extern OpenHab::Item items[];
 extern OpenHab::ItemReference *itemRef[];
 //extern OpenHab::ItemState itemStates[];
 extern char *itemStates[];
+extern char *itemStatesCopy[];
 extern OpenHab::Group groups[];
 extern const char* pages[];
 extern JsonObject pageObj[];
 
-//OpenHab::OpenHab(Item *items, unsigned short itemCount, const int port) : 
+/*
+void debugStates(const __FlashStringHelper* msg) {
+	static int count = 1, totalCount = 0;
+	if (totalCount++ == 0)
+		for (uint8_t i = 0; i < itemCount; i++) itemStatesCopy[i] = (itemStates[i]) ? strdup(itemStates[i]) : nullptr;
+	if (totalCount < 20) {
+		Serial.printf_P(PSTR("debugStates %s\n"), msg);
+		for (uint8_t i = 1; i < itemCount; i++)
+			Serial.printf_P(PSTR("item#:%d - addr:%0p - name:%s - org state:%s - new state:%s\n"), 
+				i, itemStates[i], items[i].name, 
+				(itemStatesCopy[i]) ? itemStatesCopy[i] : PSTR("NULL"),
+				(itemStates[i]) ? itemStates[i] : PSTR("NULL"));			
+	}
+	for (uint8_t i = 1; i < itemCount; i++) //itemCount
+		if ((count < 20) && itemStates[i] && itemStatesCopy[i] && strcmp(itemStates[i], itemStatesCopy[i])) {
+			Serial.printf_P(PSTR("Corruption @%s - count (total): %d (%d), item#:%d - addr:%p - name:%s - org state:%s - new state:%s\n"), 
+				msg, count++, totalCount, i, itemStates[i], items[i].name, 
+				(itemStatesCopy[i]) ? itemStatesCopy[i] : PSTR("NULL"),
+				(itemStates[i]) ? itemStates[i] : PSTR("NULL"));
+
+		}
+		//if (count % 10 == 0) Serial.printf_P(PSTR("Item: %d - name: %s - state: %s\n"), i, items[i].name, (itemStates[i]) ? itemStates[i] : PSTR(""));
+	//Serial.printf_P(PSTR("Item: %d - name: %s - state: %s\n"), 11, items[11].name, itemStates[11]);
+}
+*/
+
 OpenHab::OpenHab(const int port) : 
 	_port(port),
 	_sitemap(nullptr),
@@ -46,9 +72,6 @@ uint8_t OpenHab::getItemIdx(const char *name) {
 const char *OpenHab::functionOR(uint8_t groupIdx, uint8_t itemIdx, uint8_t *numItems) {
 	int count = 0;
 	DbgPrint(F(" - functionOR"));
-	//ItemState &itemState = itemStates[itemIdx];
-	//char *state = itemStates[itemIdx];
-	//OpenHab::Item item = getItem(itemIdx);			// Create a Item copy from flash	
 	JsonObject f = itemRef[itemIdx][0].obj[F("function")];
 	JsonArray fparams = f[F("params")];
 	const char *fvalue = fparams[0];
@@ -151,56 +174,70 @@ FORCE_INLINE void OpenHab::setGroupState(const char *groupName) {
 	if (_subscriptionCount) SSEBroadcastItemChange(itemStates[itemIdx], "", itemIdx);
 }
 
-void OpenHab::setCurrentDateTime(uint8_t itemIdx, char *state) {
+void OpenHab::setCurrentDateTime(uint8_t itemIdx) {
 	char prevState[24];
-	strcpy(prevState, state);
+	prevState[0] = '\0';
+	if (itemStates[itemIdx]) strcpy(prevState, itemStates[itemIdx]);
 	time_t now = time(nullptr); // Time since epoch
 	const tm* tm = localtime(&now); // Converted to localtime
-	strftime (state, 22 ,"%FT%T", tm);  // Converted to an ISO date string
-	DbgPrintln(F("setCurrentDateTime: "), state);
-	auto setStateBind = std::bind(static_cast<void(OpenHab::*)(uint8_t, char*)>
-		(&OpenHab::setCurrentDateTime), this, itemIdx, state);
-	if (!_currentDateTimer.active())
+	strftime (_currentDateTime, 22 ,"%FT%T", tm);  // Converted to an ISO date string
+	itemStates[itemIdx] = (char *) (& _currentDateTime);
+	auto setStateBind = std::bind(static_cast<void(OpenHab::*)(uint8_t)>
+		(&OpenHab::setCurrentDateTime), this, itemIdx);
+	if (!_currentDateTimer.active()) {
 		_currentDateTimer.attach(60.0, setStateBind);  // Refresh time every minute (could be optimized in the future)
-	if (_subscriptionCount) SSEBroadcastItemChange(state, prevState, itemIdx);
+		DbgPrint(F(" - previous state: "), prevState);
+		return;
+	}
+	DbgPrintln(F("setCurrentDateTime: "), _currentDateTime);
+	if (_subscriptionCount) SSEBroadcastItemChange(_currentDateTime, prevState, itemIdx);
+
 }
 
 // Function to set and eventually propagate (e.g. label, group state) the state of an item 
 void OpenHab::setState(uint8_t itemIdx, const char *state, bool updateGroup) {
-	static char nullState = '\0';
 	char prevState[64], intState[4];
 	auto handleUpDownState = [&](const char *state, size_t value) {
 		if (strcmp_P(state, PSTR("UP")) == 0) value = (value >= 90) ? 100 : value + 10;
 		else if (strcmp_P(state, PSTR("DOWN")) == 0) value = (value <= 10) ? 0 : value - 10;
 		else value = atoi(state);
 		sprintf_P(intState, PSTR("%d"), value);
-		DbgPrint(F(" - setRollerShutterState value: "), intState);
+		//DbgPrint(F(" - setRollerShutterState value: "), intState);
 		return intState;
 	};
 
+	const char *itemState = itemStates[itemIdx];	// Get current (previous) state
 	DbgPrint(F(" - setState itemIdx: "), itemIdx);
-	DbgPrint(F(" - requested state: "), state);
+	DbgPrint(F(" - requested state: "), (state) ? state : PSTR("NULL"));
 	Item item = getItem(itemIdx);				// Get Item copy from flash, reading direcly from flash causes misaligned read crashes
 	ItemReference *itemref = itemRef[itemIdx];
 
-	const char *itemState = itemStates[itemIdx];	// Get current (previous) state
-	prevState[0] = '\0';
-	if (itemState)
-		strncpy(prevState, itemState, min(strlen(itemState) + 1, (size_t)sizeof(prevState)));
-	DbgPrint(F(" - previous state: "), prevState);
-	
-	bool isCurrentDateTime = ((item.type == ItemDateTime) && !strncmp_P(item.name, PSTR("Current"), 7)); // item name reflecting current Date/Time?
-	if ((item.type == ItemRollerShutter) || (item.type == ItemColor)) state = handleUpDownState(state, atoi(prevState));
+	// Copy previous state
+	//prevState[0] = '\0';
+	strncpy(prevState, itemState, min(strlen(itemState) + 1, (size_t)sizeof(prevState)));
 
-	size_t len = (isCurrentDateTime) ? 24 : (state) ? strlen(state) + 1 : 0;
-	char *p = (len) ? (char *) realloc((void *) itemState, len) : &nullState;	// New state might require more space
-	if (isCurrentDateTime) setCurrentDateTime(itemIdx, p);	// This is a request to supply the current date and time
-	else if (len) memcpy(p, state, len);					// Replicate the new state
-	DbgPrint(" - new state: ", p);
-	if (!strcmp(p, prevState)) {
-		DbgPrintln(F(" - no state change"));
-		return;	
+	char *p;
+	bool isCurrentDateTime = ((item.type == ItemDateTime) && !strncmp_P(item.name, PSTR("Current"), 7)); // item name reflecting current Date/Time?
+	if (isCurrentDateTime) {
+		free((void *)itemState);			// We no longer need dynamic pointer for current date/time
+		setCurrentDateTime(itemIdx);	// This is a request to supply the current date and time
+		p = (char *) (& _currentDateTime);
+	} else {	// state == nullptr means initialize
+		if (!state) p = (char *) itemState;	// New state is previous state
+		else {
+			if (!strcmp(state, itemState)) {
+				DbgPrintln(F(" - no state change"));
+				return;	
+			}
+			DbgPrint(F(" - previous state: "), prevState);
+			if ((item.type == ItemRollerShutter) || (item.type == ItemColor)) state = handleUpDownState(state, atoi(prevState));
+
+			size_t len = strlen(state) + 1;
+			p = (char *) realloc((void *) itemState, len);
+			memcpy_P(p, state, len);			// Replicate the new state
+		} 
 	}
+	DbgPrint(" - new state: ", p);
 	itemStates[itemIdx] = p;	// Update state
 	//_callback_function(itemIdx);	// call back user code
 
@@ -252,7 +289,7 @@ FORCE_INLINE void OpenHab::updateItem(const JsonVariant itemObj, const JsonVaria
 	ItemType itemType = item.type;
 	ItemReference *itemref = itemRef[itemIdx];
 	const char* state = item.state;			// Get initial state from flash
-	itemStates[itemIdx] = (state) ? strdup(state) : nullptr;		// and duplicate (no need for _P)
+	itemStates[itemIdx] = (state) ? strdup(state) : new char[1]();		// and duplicate (no need for _P)
 	JsonVariant labelObj = widgetObj[F("label")];
 	const char *label = labelObj; 
 	if (item.labelFormat) labelObj.set(nullptr);		// Initialize formatted label to nullstr
@@ -273,16 +310,6 @@ FORCE_INLINE void OpenHab::updateItem(const JsonVariant itemObj, const JsonVaria
 	DbgPrintln(F(""));
 }
 
-/*
-void OpenHab::debugStates() {
-	for (uint8_t i = 0; i < itemCount; i++) {
-		DbgPrint(F("Item: "), i);
-		DbgPrint(F(" - name: "), items[i].name);
-		DbgPrintln(F(" - state: "), itemStates[i]);
-	}
-}
-*/
-
 FORCE_INLINE uint8_t OpenHab::getPageIdx(const char *name) {
   uint8_t i;
   for (i = 0; i < pageCount; i++)
@@ -292,7 +319,6 @@ FORCE_INLINE uint8_t OpenHab::getPageIdx(const char *name) {
 }
 
 void OpenHab::registerLinkHandlers(const JsonObject obj, const char *pageId) {
-	//static Page *lastPage = nullptr;
 	for (const JsonPair pair : obj) {
 		const char *key = pair.key().c_str();
 		if (!strcmp_P(key, PSTR("linkedPage")) || !strcmp_P(key, PSTR("homepage"))) { // Page
@@ -301,16 +327,6 @@ void OpenHab::registerLinkHandlers(const JsonObject obj, const char *pageId) {
 			DbgPrintln(F("page: "), pageId);
 			uint8_t pageIdx = getPageIdx(pageId);
 			pageObj[pageIdx] = obj;
-			
-			/*
-			Page *page = new Page {pageId, (JsonVariant) pageObj, nullptr};
-			if (lastPage) lastPage->next = page;
-			else { // Homepage, set sitemap name
-				sitemap->pageList = page;
-				sitemap->name = pageId;
-			}
-			lastPage = page;
-			*/
 		} else if (!strcmp_P(key, PSTR("item"))) // Items
 			updateItem(pair.value().as<JsonObject>(), obj, pageId);
 
@@ -445,9 +461,8 @@ out:
 	for(uint8_t n = 0; n < itemCount; n++) {
 		DbgPrint(F("init state: "), n);
 		DbgPrintln(F(" - name : "), items[n].name);
-		setState(n, items[n].state);
+		setState(n, nullptr);	// nullptr means initialize state
 	}
-	//debugStates();
 	DbgPrintln(F("Exit OpenHab::InitServer"));
 	return true;
 }
@@ -668,8 +683,8 @@ void OpenHab::handleSubscribe() {
 	for (channel = 0; channel < SSE_MAX_CHANNELS; channel++) // Find first free slot
 		if (!_subscription[channel].clientIP) break;
 
-	_subscription[channel] = {(uint32_t) clientIP, _server.client(), ESP8266TrueRandom.uuidToString(uuid), IllegalIndex, Ticker()};
-	strcat(buf, _subscription[channel].uuidStr.c_str());
+	_subscription[channel] = {(uint32_t) clientIP, _server.client(), strdup(ESP8266TrueRandom.uuidToString(uuid).c_str()), IllegalIndex, Ticker()};
+	strcat(buf, _subscription[channel].uuidStr);
 	DbgPrint(F(" - allocated channel "), channel);	
 	DbgPrintln(F(" on uri "), buf);	
 
@@ -677,7 +692,7 @@ void OpenHab::handleSubscribe() {
 	JsonArray location = context[F("headers")][F("Location")];
 	location[0] = (const char *) buf;
 	SendJson(jsonDoc.as<JsonVariant>());
-	jsonDoc.clear();
+	//jsonDoc.clear();
 	DbgPrintln(F(" - free heap memory @handlesubscribe exit: "), ESP.getFreeHeap());
 }
 
@@ -686,6 +701,7 @@ void OpenHab::SSEdisconnect(WiFiClient client, Subscription &subscription) {
 	client.flush();
 	client.stop();
 	subscription.clientIP = 0;
+	free(subscription.uuidStr);
 	subscription.keepAliveTimer.detach();
 	_subscriptionCount--;
 }
@@ -699,7 +715,6 @@ void OpenHab::SSEBroadcastItemChange(const char *state, const char *prevState, u
 		//DbgPrintln(F("channel: "), channel);
 		Subscription &subscription = _subscription[channel];
 		if (!subscription.clientIP) continue;	// Skip unallocated channels
-	    WiFiClient client = subscription.client;
     	String IPaddrstr = IPAddress(subscription.clientIP).toString();
     	if (subscription.client.connected()) {	// Only broadcast if client still connected
 			if (isValidIndex(subscription.pageIdx)) {	// Basic UI
@@ -773,7 +788,7 @@ void OpenHab::handleSSEAll(const char *uri, bool isHabPanel) {
 				//DbgPrintln(F("Matching IP for channel: "), channel);				 
 				//DbgPrintln(F("_subscription uuidstr: "), _subscription[channel].uuidStr.c_str());				 
 				//DbgPrintln(F("uuid comparison: "), (_subscription[channel].uuidStr == uri));				 
-				if (strncmp_P(_subscription[channel].uuidStr.c_str(), uri, 36) == 0) break;
+				if (strncmp_P(_subscription[channel].uuidStr, uri, 36) == 0) break;
 			}
 		}
 	if (channel == SSE_MAX_CHANNELS) {	// IP address and UUID did not match, reject this client
@@ -785,7 +800,7 @@ void OpenHab::handleSSEAll(const char *uri, bool isHabPanel) {
 
 	if (isHabPanel) {
 		_subscriptionCount++;
-		_subscription[channel] = {(uint32_t) clientIP, _server.client(), PSTR(""), IllegalIndex, Ticker()};
+		_subscription[channel] = {(uint32_t) clientIP, _server.client(), nullptr, IllegalIndex, Ticker()};
 	} else {
 		if (strcmp_P((_server.arg(0)).c_str(), pages[0])) {
 			DbgPrintln(F("ERROR unknown sitemap: "), (_server.arg(0)).c_str());	

@@ -49,7 +49,6 @@ extern "C" {
 #include <coredecls.h>       
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-//#define DEBUG_ESP_PORT Serial
 //#define SSESOCKETS_SAVE_RAM
 //#include <SSESocketsServer.h>
 #include "ESP8266TrueRandom.h"
@@ -245,7 +244,8 @@ public:
 	struct Subscription {
 		uint32_t clientIP;
 		WiFiClient client;
-		String uuidStr;
+		char *uuidStr;
+		//String uuidStr;
 		uint8_t pageIdx;
 		Ticker keepAliveTimer;
 	};
@@ -265,7 +265,7 @@ public:
 	void setState(const char *itemName, const char *state, bool updateGroup = true);
 	void setState(uint8_t itemIdx, const char *state, bool updateGroup = true);
 	void setState(uint8_t itemIdx, float f, bool updateGroup = true, uint8 precision = 2);
-	void debugStates();
+	//void debugStates();
 #endif	// OPENHAB_GEN_CONFIG
 	
 protected:
@@ -284,10 +284,10 @@ protected:
 	state_callback_function_t _callback_function;
 	Subscription _subscription[SSE_MAX_CHANNELS];
 	uint8_t _subscriptionCount;
-	struct tm *_currentDateTime;
+	char _currentDateTime[24];
 	const char **_allowedMAC;
 
-	void setCurrentDateTime(uint8_t itemIdx, char *state);
+	void setCurrentDateTime(uint8_t itemIdx);
 	void SSEBroadcastItemChange(const char* state, const char *prevState, uint8_t itemIdx);
 	void SSEKeepAlive(Subscription &subscription);
 	void SSEdisconnect(WiFiClient client, Subscription &subscription);

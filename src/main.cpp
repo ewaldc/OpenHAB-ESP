@@ -28,7 +28,7 @@ void setup(void) {
   //ESP.wdtEnable(65535);
   delay(500);
   Serial.printf_P(PSTR("free heap memory: %d\n"), ESP.getFreeHeap());
-  
+
   if (!OpenHabServer.Init(ssid, softAPssid, passphrase, allowedMAC))
     DbgPrintln(F("Server init failed"));
   else { 
