@@ -1,0 +1,19 @@
+{
+    "toolchain-xtensa-lx106-elf": [
+      {
+        "system": ["windows", "windows_amd64", "windows_x86"],
+        "url": "https://github.com/WallaceWilliam/xtensa-lx106-elf/raw/master/xtensa-lx106-elf-win32-1.22.0-100-ge567ec7-5.2.0.tar.gz",
+        "version": "5.2.0+100"
+      },
+      {
+        "system": ["darwin_x86_64", "darwin_i386"],
+        "url": "https://github.com/WallaceWilliam/xtensa-lx106-elf/raw/master/xtensa-lx106-elf-macos-1.22.0-100-ge567ec7-5.2.0.tar.gz",
+        "version": "5.2.0+100"
+      },
+      {
+        "system": ["windows", "windows_amd64", "windows_x86"],
+        "url": "https://github.com/ewaldc/xtensa-lx106-elf/raw/master/i686-w64-mingw32.xtensa-lx106-elf-82c751c.1589567088.tar.gz",
+        "version": "10.0.1"
+      }
+    ]
+  }
