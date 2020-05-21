@@ -12,7 +12,7 @@
       },
       {
         "system": ["windows", "windows_amd64", "windows_x86"],
-        "url": "https://github.com/ewaldc/OpenHAB-ESP/blob/master/xtensa-lx106-elf/i686-w64-mingw32.xtensa-lx106-elf-82c751c.1589567088.tar.gz",
+        "url": "https://github.com/ewaldc/OpenHAB-ESP/blob/master/xtensa-lx106-elf/i686-w64-mingw32.xtensa-lx106-elf-82c751c.1589567088.tar.gz?raw=true",
          "version": "10.0.1"
       }
     ]
