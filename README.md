@@ -82,9 +82,10 @@ Working with OpenHab ESP happens in __3 phases__ :
 1. Take a look at the _mkspiffs_ folder and the _README_ file to select and install 32 or 64 byte file name support
 1. Once complete, use the PlatformIO _Upload File System Image_ extension to upload the configuration data to the ESP SPIFFS based flash file system. 
 1. Modify _src/main.cpp_ with the _port_of your ESP OpenHab 2 server_ and add your code and rules to set or modify the state of all Items that correspond with your sensors or application use case (see below).  This can be also done in seperate (include) files as desired.  
-1. Compile the code and upload.
+1. Compile the code and upload.  Default builds are _debug_ mode builds (_platformio.ini : build_type = debug_)
 1. See the log message on the console, it will say "HTTP server started" when the server is ready to accepts connections
 1. Test using the Android client (April/early May 2020 versions will not work due a defect) or test the REST API e.g. via a browser
+1. _Optional_: When all is running fine, consider _release_ mode builds (_platformio.ini : build_type = release)
 
 ## Integrating devices controlled by the ESP ##   
 

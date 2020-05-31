@@ -7,16 +7,20 @@
 
 #define OpenHABInclude
 #pragma once
-#ifndef OpenHABDebug
+
+// Arduino IDE
+#if defined(ARDUINO) && !defined(PLATFORMIO)
 #define OpenHABDebug
+#define SPIFFS_OBJ_NAME_LEN 64
+#define ARDUINOJSON_DECODE_UNICODE 1
 #endif
 
 //#define OPENHAB_GEN_CONFIG    // Comment to switch to run-time mode
 #ifndef OPENHAB_GEN_CONFIG
-#define SSE_MAX_CHANNELS 8
+#define SSE_MAX_CHANNELS 16
 
-#define strdup_P(s) strndup_P(s, sizeof(s))
-#define strndup_P(s, size) strcat_P((char *)malloc(size + 1), s)
+//#define strdup_P(s) strndup_P(s, sizeof(s))
+//#define strndup_P(s, size) strcat_P((char *)malloc(size + 1), s)
 
 // Avoid warning: always_inline function might not be inlinable [-Wattributes]
 #ifdef _MSC_VER  // Visual Studio
@@ -27,21 +31,17 @@
 #define FORCE_INLINE __attribute__((always_inline))
 #define NO_INLINE __attribute__((noinline))
 #pragma GCC diagnostic ignored "-Wattributes"
-#if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 5)
 #define DEPRECATED(msg) __attribute__((deprecated(msg)))
-#else
-#define DEPRECATED(msg) __attribute__((deprecated))
-#endif
 #else  // Other compilers
 #define FORCE_INLINE
 #define NO_INLINE
 #define DEPRECATED(msg)
 #endif
 
-extern "C" {
-#include "c_types.h"
-}
 
+//extern "C" {
+//#include "c_types.h"
+//}
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <time.h>
@@ -52,11 +52,11 @@ extern "C" {
 //#define SSESOCKETS_SAVE_RAM
 //#include <SSESocketsServer.h>
 #include "ESP8266TrueRandom.h"
-#include <ESP8266WiFiType.h>
+//#include <ESP8266WiFiType.h>
 #include <ESP8266WiFiSTA.h>
 #include <ESP8266WiFiScan.h>
-#include <ESP8266WiFiMulti.h>
-#include <ESP8266WiFiGeneric.h>
+//#include <ESP8266WiFiMulti.h>
+//#include <ESP8266WiFiGeneric.h>
 #include <ESP8266WiFiAP.h>
 #include "Ticker.h"
 #include <TZ.h>
@@ -64,9 +64,10 @@ extern "C" {
 //#include <WiFiClientSecure.h>
 #include "BufferedPrint.h"
 #include <FS.h>   // Include the SPIFFS library
-#include "base64.h"
-#include "libb64/cdecode.h"
+#include <base64.h>
+#include <libb64/cdecode.h>
 #include <ArduinoJson.h>
+//#include <pgmspace.h>
 
 #define IllegalIndex 255
 #define isValidIndex(i) (i != IllegalIndex)
@@ -77,7 +78,6 @@ enum ContentType: uint8 {IMAGE_SVG = 0, IMAGE_PNG, IMAGE_JPEG, TEXT_PLAIN, TEXT_
 
 static const char* ContentTypeStr[] PROGMEM = {"image/svg+xml", "image/png", "image/jpeg", "text/plain", "text/html", "text/css", "application/javascript", "application/json", "application/octet-stream"};
 static const char* ContentTypeExt[] PROGMEM = {".svg", ".png", ".jpeg", "", ".html", ".css", ".js", ".json"};
-static const char* HTTPMethodStr[] PROGMEM = { "HTTP_ANY", "HTTP_GET", "HTTP_HEAD", "HTTP_POST", "HTTP_PUT", "HTTP_PATCH", "HTTP_DELETE", "HTTP_OPTIONS" };
 
 inline const char* PROGMEM getContentTypeStr(ContentType contentType) { return ContentTypeStr[contentType]; }
 inline const char* PROGMEM getContentTypeExt(ContentType contentType) { return ContentTypeExt[contentType]; }
@@ -104,6 +104,7 @@ static const char *ItemTypeString[] PROGMEM = {"ItemNull", "ItemCall", "ItemColo
 	"ItemRollerShutter", "ItemString", "ItemSwitch"};
 #endif // OPENHAB_GEN_CONFIG
 
+static const char* HTTPMethodStr[] PROGMEM = { "HTTP_ANY", "HTTP_GET", "HTTP_HEAD", "HTTP_POST", "HTTP_PUT", "HTTP_PATCH", "HTTP_DELETE", "HTTP_OPTIONS" };
 enum ItemType : uint16 {ItemNull = 0, ItemCall, ItemColor, ItemContact, ItemDateTime, ItemDimmer, ItemGroup, ItemLocation, ItemNumber, ItemNumber_Angle,
 	ItemRollerShutter, ItemString, ItemSwitch};
 static const char *ItemTypeStr[] PROGMEM = {"", "Call", "Color", "Contact", "DateTime", "Dimmer", "Group", "Location", "Number", "Number:Angle",
@@ -140,9 +141,9 @@ ICACHE_FLASH_ATTR static inline void DbgPrintf(const char *format, ...) {
 }
 #endif // OPENHAB_GEN_CONFIG
 #else	// OpenHABDebug
-#define DbgPrint(x)			{}
+#define DbgPrint(x,...)		{}
 #define DbgPrintln(x,...)	{}
-#define DbgPrintf(const char *format, ... ) {}
+#define DbgPrintf(f,... )	{}
 #endif	// OpenHABDebug
 
 // Debug code, activate when needed 
@@ -236,7 +237,7 @@ public:
 #endif
 		ItemType type;					// Type of all group member
 		GroupFunction function;			// AVG or OR function
-		uint8_t *items;					// Index List of all group member items
+		uint8_t items;					// Index of first group member in groupItems array
 		uint8_t itemCount;				// Number of member items
 	};
 
@@ -250,7 +251,7 @@ public:
 		Ticker keepAliveTimer;
 	};
 
-	typedef std::function<void(uint8_t)> state_callback_function_t;
+	typedef std::function<void(uint8_t, const char*)> state_callback_function_t;
 #endif
 
 	OpenHab(const int port = 80);
@@ -294,8 +295,8 @@ protected:
 	uint8_t getItemIdx(const char *name);
 	uint8_t getPageIdx(const char *name);
 	void updateItem(const JsonVariant itemObj, const JsonVariant widgetObj, const char *pageId);
-	float functionAVG(uint8_t *groupItems, uint8_t count);
-	const char *functionOR(uint8_t groupIdx, uint8_t itemIdx, uint8_t *numItems);
+	float functionAVG(Group &group);
+	const char *functionOR(Group &group, uint8_t itemIdx, uint8_t *numItems);
 	void setGroupState(const char *groupName);
 	void updateLabel(uint8_t itemIdx, char *state, ItemType type, int numItems = -1);
 
@@ -310,6 +311,7 @@ protected:
 	void handleIcon(const char *uri);
 	void handleSSEAll(const char *uri, bool isHabPanel = false);
 	void handleItem(const char *uri);
+	void handleChart(const char *uri);
 
 #else // OPENHAB_GEN_CONFIG
 	const char *Pages[256];
@@ -340,8 +342,7 @@ protected:
 	};
 	
 #ifndef OPENHAB_GEN_CONFIG
-#ifdef OpenHABDebug
-	ICACHE_FLASH_ATTR void DbgPrintRequest(String str) {
+	ICACHE_FLASH_ATTR void DbgPrintRequest(const __FlashStringHelper* str) {
 		String message = F("\nDbgPrintRequest - URI: ");
 		message += _server.uri(); message += F(" - METHOD: ");
 		message += HTTPMethodStr[_server.method()];	message += F("  - ARGUMENTS: ");
@@ -349,11 +350,9 @@ protected:
 			message += _server.argName(i); message += F(" = ");
 			message += _server.arg(i); message += F("; ");
 		}
-		DbgPrintln(str, message);
+		Serial.println(str);
+		Serial.println(message.c_str());
 	}
-#else
-	#define DbgPrintRequest(x,y)	{}
-#endif
 #endif
 };
 

@@ -14,3 +14,4 @@ include/secret.h
 include/SSE*
 include/ESP8266WebServer
 src/SSE*
+xtensa-lx106-elf/tmp

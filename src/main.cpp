@@ -1,11 +1,7 @@
-//#define ArduinoJsonDebug
-#define OpenHABDebug
-#include <pgmspace.h>
-
-// WiFi parameters are inlcuded from secret.h which is not posted on GitHub
+// WiFi parameters are included from secret.h which is not posted on GitHub
 // Edit include/secret_example.h and rename to include/secret.h
-#include "secret.h"
 #include "OpenHAB.h"
+#include "secret.h"
 
 #define LISTEN_PORT 8080              // The port to listen for incoming TCP connections
 OpenHab OpenHabServer(LISTEN_PORT);   // Create an instance of the OpenHAB server
@@ -14,9 +10,10 @@ OpenHab OpenHabServer(LISTEN_PORT);   // Create an instance of the OpenHAB serve
 #include "main.h"
 
 // For every item that is changed by the end user (UI), this function will be called
-void handleStateChange(uint8_t itemIdx) {
+void handleStateChange(uint8_t itemIdx, const char *prevState) {
+  Serial.println(F("handleStateChange"));
   OpenHab::Item item = getItem(itemIdx);	
-  Serial.printf_P(PSTR("handleStateChange: Item %s changed state to \"%s\"\n"), item.name, itemStates[itemIdx]);
+  Serial.printf_P(PSTR("handleStateChange: Item %s changed state from \"%s\" to \"%s\"\n"), item.name, prevState, itemStates[itemIdx]);
 }
 
 void setup(void) {
@@ -27,14 +24,13 @@ void setup(void) {
   //wdt_disable();
   //ESP.wdtEnable(65535);
   delay(500);
-  Serial.printf_P(PSTR("free heap memory: %d\n"), ESP.getFreeHeap());
 
   if (!OpenHabServer.Init(ssid, softAPssid, passphrase, allowedMAC))
-    DbgPrintln(F("Server init failed"));
+    Serial.println(F("Server init failed"));
   else { 
     OpenHabServer.StartServer();	// Start the server
     OpenHabServer.stateChangeCallback(handleStateChange); // Register callback for state changes
-    DbgPrintln(F("HTTP server started"));
+    Serial.println(F("HTTP server started"));
   }
 }
 
